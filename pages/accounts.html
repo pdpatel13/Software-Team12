@@ -5,8 +5,43 @@
     </head>
     
     <body>
-        <p>Manage your account here:</p>
-        <a href="/">Home</a>
+        <h1>Accounts</h1>
+        <button onclick="buttonFunc1()">Sign In</button>
+        <button onclick="buttonFunc2()">Create Account</button>
         
+        <a href="/">Home</a>
+
+        <form method=" post"
+        action="">
+        <fieldset hidden id="CreateAcct">
+            <legend>Create New Account</legend>
+            <p>
+                <label>Email Address: <input type="email"
+                id="emailAddr" onblur="checkExists()"
+                placeholder = "an email will be sent to verify your email address" />
+                </label>
+            </p>
+            <p>
+                <label>Username: <input type="text"
+                id="username" onblur="checkAvailable()"
+                placeholder = "Username must be at leat 8 characters" />
+                </label>
+            </p>
+            <p>
+                <label>Password: <input type="text"
+                id="username" onblur="validPassword()"
+                placeholder = "Password must be 8 characters long and include at least 1 letter number and symbol" />
+                </label>
+            </p>
+
+        </fieldset>
+        </form>
+
+        <script>
+            var buttonFunc2 = function()
+            {
+                document.getElementById("CreateAcct").removeAttribute('hidden');
+            };
+        </script>
     </body>
 </html>
