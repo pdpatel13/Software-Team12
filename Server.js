@@ -167,6 +167,7 @@ const requestHandlerHTML = function(req, res){
             if(req.url == "/")
                 fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
             else {
+                //We use .then() and .catch() b/c fs.promises is async.
                 fs.access(__dirname + "/pages" + req.url, fsc.F_OK)
                 .then(() => fs.readFile(__dirname + "/pages" + req.url).then(contents => res.end(contents)))
                 .catch(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
