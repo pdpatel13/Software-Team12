@@ -1,8 +1,6 @@
 // To run, make sure you have Node installed and run 'node Server.js'. To access the webpage itself, go to
 // localhost:8080 in your browser.
 
-const { debug } = require('console');
-const { fchmodSync } = require('fs');
 var http = require('http');
 var fs  = require('fs').promises; //We use fs to read html files
 var fsc = require('fs').constants;
