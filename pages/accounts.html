@@ -8,8 +8,26 @@
         <h1>Accounts</h1>
         <button onclick="buttonFunc1()">Sign In</button>
         <button onclick="buttonFunc2()">Create Account</button>
-        
-        <a href="/">Home</a>
+
+        <form method=" post"
+        action="">
+        <fieldset hidden id="Signin">
+            <legend>Sign in</legend>
+            <p>
+                <label>Username: <input type="text"
+                id="signinUsername" onblur="validUser()"
+                placeholder = "Enter your username" />
+                </label>
+            </p>
+            <p>
+                <label>Password: <input type="password"
+                id="signinPassword" onblur="validPassword()"
+                placeholder = "Enter your password" />
+                </label>
+            </p>
+            <input type="submit" value="Sign In" onclick="signin()">
+        </fieldset>
+        </form>
 
         <form method=" post"
         action="">
@@ -17,31 +35,84 @@
             <legend>Create New Account</legend>
             <p>
                 <label>Email Address: <input type="email"
-                id="emailAddr" onblur="checkExists()"
+                id="emailAddr"
                 placeholder = "an email will be sent to verify your email address" />
                 </label>
             </p>
             <p>
                 <label>Username: <input type="text"
-                id="username" onblur="checkAvailable()"
+                id="username" onblur="checkUsername()"
                 placeholder = "Username must be at leat 8 characters" />
                 </label>
             </p>
             <p>
-                <label>Password: <input type="text"
-                id="username" onblur="validPassword()"
+                <label>Password: <input type="password"
+                id="password" onblur="checkPassword()"
                 placeholder = "Password must be 8 characters long and include at least 1 letter number and symbol" />
                 </label>
             </p>
+            <p>
+                <label>Retype Password: <input type="password"
+                id="retype password" onblur="checkPasswordMatch()"
+                placeholder = "Passwords must match" />
+                </label>
+            </p>
+            <input type="submit" value="Create Account" onclick="createAccount()">
 
         </fieldset>
         </form>
 
         <script>
+            var buttonFunc1 = function()
+            {
+                document.getElementById("CreateAcct").hidden = true;
+                document.getElementById("Signin").hidden = false;
+            };
+
             var buttonFunc2 = function()
             {
-                document.getElementById("CreateAcct").removeAttribute('hidden');
+                document.getElementById("Signin").hidden = true;
+                document.getElementById("CreateAcct").hidden = false;
             };
+
+            
+            function validUser()
+            {
+                
+            };
+
+            function validPassword()
+            {
+                
+            };
+
+            
+            function checkUsername()
+            {
+                
+            };
+            
+            function checkPassword()
+            {
+                
+            };
+
+            function checkPasswordMatch()
+            {
+                p1 = document.getElementById("password")
+                p2 = document.getElementById("retype password")
+
+                //if (p1 != p2)
+                    
+            };
+            
+            function createAccount()
+            {
+                
+            };
+            
+
         </script>
+        <a href="/">Home</a>
     </body>
 </html>
