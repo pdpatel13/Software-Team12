@@ -75,12 +75,16 @@ const requestHandlerHTML = function(req, res){
     //Since each function takes urlparts, just in case the server determines the wrong one should be called, we'll try-catch each:
     let done = false;
     let resMsg = {};
-    try{
+
+    // Accounts is currently commented out as a function so that this section will pass with good = false, so that
+    // /pages/accounts.html will be picked up and used by the html redirector below and used instead.
+
+    /*try{
         if(done === false && /\/accounts/.test(req.url)){
             resMsg = accounts(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
+    }catch(exc){};*/
 
     try{
         if(done === false && /\/inventory/.test(req.url)){
@@ -152,27 +156,18 @@ const requestHandlerHTML = function(req, res){
         var dataRequest = false; //For when something other than an html page is requested.
                                  //This may need to be determined from another list like the pages array
 
-        dataRequest = (req.url == "/geturl"); //This is just temporary
+        res.writeHead(200, {'Content-Type': 'text/html'});
 
-        if(dataRequest){
-            //Since /geturl is the only data request url that's coded for right now, we'll assume that's what the request is.
-            res.writeHead(200, {'Content-Type': 'text/plain'});
-            res.end();
-
-        }else { //If it's not requesting data, it must be requesting an HTML page, like the whole file.
-
-            res.writeHead(200, {'Content-Type': 'text/html'});
-
-            res.write(req.url);
-            if(req.url == "/")
-                fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
-            else {
-                //We use .then() and .catch() b/c fs.promises is async.
-                fs.access(__dirname + "/pages" + req.url, fsc.F_OK)
-                .then(() => fs.readFile(__dirname + "/pages" + req.url).then(contents => res.end(contents)))
-                .catch(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
-            }
+        res.write(req.url);
+        if(req.url == "/")
+            fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
+        else {
+            //We use .then() and .catch() b/c fs.promises is async.
+            fs.access(__dirname + "/pages" + req.url + ".html", fsc.F_OK)
+            .then(() => fs.readFile(__dirname + "/pages" + req.url + ".html").then(contents => res.end(contents)))
+            .catch(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
         }
+        
     }
     
 }
