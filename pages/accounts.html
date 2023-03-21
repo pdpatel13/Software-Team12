@@ -36,19 +36,19 @@
             <p>
                 <label>Email Address: <input type="email"
                 id="emailAddr"
-                placeholder = "an email will be sent to verify your email address" />
+                placeholder = "Verification email will be sent to your address" />
                 </label>
             </p>
             <p>
                 <label>Username: <input type="text"
                 id="username" onblur="checkUsername()"
-                placeholder = "Username must be at leat 8 characters" />
+                placeholder = "Must be at leat 8 characters" />
                 </label>
             </p>
             <p>
                 <label>Password: <input type="password"
                 id="password" onblur="checkPassword()"
-                placeholder = "Password must be 8 characters long and include at least 1 letter number and symbol" />
+                placeholder = "Must be 8 characters long and include at least 1 letter number and symbol" />
                 </label>
             </p>
             <p>
@@ -63,55 +63,7 @@
         </form>
 
         <script>
-            var buttonFunc1 = function()
-            {
-                document.getElementById("CreateAcct").hidden = true;
-                document.getElementById("Signin").hidden = false;
-            };
-
-            var buttonFunc2 = function()
-            {
-                document.getElementById("Signin").hidden = true;
-                document.getElementById("CreateAcct").hidden = false;
-            };
-
-            
-            function validUser()
-            {
-                
-            };
-
-            function validPassword()
-            {
-                
-            };
-
-            
-            function checkUsername()
-            {
-                
-            };
-            
-            function checkPassword()
-            {
-                
-            };
-
-            function checkPasswordMatch()
-            {
-                p1 = document.getElementById("password")
-                p2 = document.getElementById("retype password")
-
-                //if (p1 != p2)
-                    
-            };
-            
-            function createAccount()
-            {
-                
-            };
-            
-
+            src = "accounts.js"
         </script>
         <a href="/">Home</a>
     </body>
