@@ -16,48 +16,69 @@
             <p>
                 <label>Username: <input type="text"
                 id="signinUsername" onblur="validUser()"
-                placeholder = "Enter your username" />
+                placeholder = "Enter your username" 
+                title="Enter a valid username">
+
                 </label>
             </p>
             <p>
                 <label>Password: <input type="password"
                 id="signinPassword" onblur="validPassword()"
-                placeholder = "Enter your password" />
+                placeholder = "Enter your password"
+                title="Enter the password corresponding to your username">
                 </label>
             </p>
             <input type="submit" value="Sign In" onclick="signin()">
         </fieldset>
         </form>
 
-        <form method=" post"
+        <form method= "post"
         action="">
         <fieldset hidden id="CreateAcct">
             <legend>Create New Account</legend>
             <p>
-                <label>Email Address: <input type="email"
-                id="emailAddr"
-                placeholder = "Verification email will be sent to your address" />
-                </label>
+                <label for="emailAddr">Your Email:</label>
+                <input type="text"
+                name="emailAddr"
+                placeholder = "Email"
+                title = "A verification will be sent to your email account"
+                minlength="8" 
+                size="25">
             </p>
+
             <p>
-                <label>Username: <input type="text"
-                id="username" onblur="checkUsername()"
-                placeholder = "Must be at leat 8 characters" />
-                </label>
+                <label for="username">Username:</label>
+                <input type="text"
+                name="username" onblur="checkUsername()"
+                placeholder = "Username"
+                title = "Enter your desired username"
+                minlength="8" 
+                size="25">
             </p>
+
             <p>
-                <label>Password: <input type="password"
-                id="password" onblur="checkPassword()"
-                placeholder = "Must be 8 characters long and include at least 1 letter number and symbol" />
-                </label>
+                <label for="password">Password:</label> 
+                <input type="password"    
+                name="password" onblur="checkPassword()"
+                placeholder = "Password"
+                title = "Must be at least 8 characters and at least 1 letter, number and symbol"
+                minlength="8" 
+                size="25" >
             </p>
+
             <p>
-                <label>Retype Password: <input type="password"
-                id="retype password" onblur="checkPasswordMatch()"
-                placeholder = "Passwords must match" />
-                </label>
+                <label>Retype Password: </label> 
+                <input type="password"
+                name="password2" onblur="checkPasswordMatch()"
+                placeholder = "Retype password"
+                title = "Must match above password "
+                minlength="8" size="25">
             </p>
-            <input type="submit" value="Create Account" onclick="createAccount()">
+
+            <input type="submit" 
+            value="Create Account" 
+            onclick="createAccount()"
+            title="Click to create your new account">
 
         </fieldset>
         </form>
@@ -102,11 +123,17 @@
 
             function checkPasswordMatch()
             {
-                p1 = document.getElementById("password")
-                p2 = document.getElementById("retype password")
+                p1 = form.elements["password"];
+                p2 = form.elements["password2"];
 
                 //if (p1 != p2)
                     
+            }
+
+            function signin()
+            {
+                user = form.elements["signinUsername"];
+                alert("Hello" + user);
             }
             /*
             function createAccount(request, response, body)

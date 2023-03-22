@@ -175,3 +175,25 @@ const requestHandlerHTML = function(req, res){
 // Set up the http server
 // TODO: Convert to https. This is seemingly not as simple as just changing 'http' to 'https' as we need an SSL certifciate to upgrade to HTTPS :/ 
 http.createServer(requestHandlerHTML).listen(8080);
+
+/*
+//setting up mySQL database, still needs work
+//from lec8 REST server example slides
+const querystr = require('querystring');
+const mysql = require("mysql");
+const port = (process.env.PORT || 8000); 8080?
+const dbCon = mysql.createConnection(
+    {
+        host:"localhost",
+        user: ??,
+        password: ??
+    }
+)
+dbCon.connect(function(err)
+{
+    if(err) throw err;
+});
+
+const regExpAccounts = new RegExp('^\/accounts\/.*','i');
+
+*/
