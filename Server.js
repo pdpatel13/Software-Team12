@@ -176,24 +176,47 @@ const requestHandlerHTML = function(req, res){
 // TODO: Convert to https. This is seemingly not as simple as just changing 'http' to 'https' as we need an SSL certifciate to upgrade to HTTPS :/ 
 http.createServer(requestHandlerHTML).listen(8080);
 
-/*
+
 //setting up mySQL database, still needs work
 //from lec8 REST server example slides
 const querystr = require('querystring');
-const mysql = require("mysql");
-const port = (process.env.PORT || 8000); 8080?
+const mysql = require("mysql2");
+const port = (process.env.PORT || 3307); //8080?
 const dbCon = mysql.createConnection(
     {
         host:"localhost",
-        user: ??,
-        password: ??
+        user: "root",
+        password: "R00t452!" //change this to the password for your mysql root account
     }
 )
+
+var sqlStmt = "CREATE DATABASE BestestBuy";
 dbCon.connect(function(err)
 {
     if(err) throw err;
+    console.log("Connected to MySQL database");
+
+    try {
+        dbCon.query(sqlStmt, function (err, result) {
+            if (err)
+            {
+                console.log(err);
+                return;
+            } 
+            console.log("Result: " + result);
+        });
+    } catch (error) {
+        var sqlStmt = "USE BestestBuy";
+        dbCon.query(sqlStmt, function (err, result) {
+            if (err)
+            {
+                console.log(err);
+                return;
+            } 
+            console.log("Result: " + result);
+        });
+    }
+    
 });
 
-const regExpAccounts = new RegExp('^\/accounts\/.*','i');
-
-*/
+//const regExpAccounts = new RegExp('^\/accounts\/.*','i');
