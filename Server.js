@@ -215,6 +215,7 @@ dbCon.connect(function(err)
 
 
 //Set up firebase for noSQL db usage
+//TODO: IF YOU HAVE NOT YET DOWNLOADED THE API KEY FILE FROM DISCORD, DO SO AND DROP IT INTO THE SAME FOLDER AS SERVER.JS. DO NOT DISTRIBUTE THAT FILE.
 // Import the functions you need from the SDKs you need
 var fbApp = require("firebase/app");
 var fbDb = require("firebase/database");
