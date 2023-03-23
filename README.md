@@ -5,6 +5,9 @@ Report 2: [Google Docs](https://docs.google.com/document/d/1nOkCGrnlludJP9I8p_Bf
 # Dev Instructions
 ## To run locally:
 1. Ensure you have installed [Node.js](https://nodejs.org/en/).
+2. In terminal:
+    'npm i mysql2'
+    'npm i firebase'
 2. Download or clone this repo
 3. In the folder containing Server.js, open your terminal and enter `node Server.js`.
 4. While it is running, you can access it from localhost:8080

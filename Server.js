@@ -172,11 +172,6 @@ const requestHandlerHTML = function(req, res){
     
 }
 
-// Set up the http server
-// TODO: Convert to https. This is seemingly not as simple as just changing 'http' to 'https' as we need an SSL certifciate to upgrade to HTTPS :/ 
-http.createServer(requestHandlerHTML).listen(8080);
-
-
 //setting up mySQL database, still needs work
 //from lec8 REST server example slides
 const querystr = require('querystring');
@@ -186,7 +181,7 @@ const dbCon = mysql.createConnection(
     {
         host:"localhost",
         user: "root",
-        password: "R00t452!" //change this to the password for your mysql root account
+        password: "passwd" //change this to the password for your mysql root account
     }
 )
 
@@ -203,7 +198,7 @@ dbCon.connect(function(err)
                 console.log(err);
                 return;
             } 
-            console.log("Result: " + result);
+            console.log("Result: ", result);
         });
     } catch (error) {
         var sqlStmt = "USE BestestBuy";
@@ -213,10 +208,40 @@ dbCon.connect(function(err)
                 console.log(err);
                 return;
             } 
-            console.log("Result: " + result);
+            console.log("Result: ", result);
         });
     }
-    
 });
+
+
+//Set up firebase for noSQL db usage
+// Import the functions you need from the SDKs you need
+var fbApp = require("firebase/app");
+var fbDb = require("firebase/database");
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+var app, fireDB;
+fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
+    firebaseJSON = contents
+
+    const firebaseConfig = JSON.parse(firebaseJSON);
+
+    // Initialize Firebase
+    try{
+    app = fbApp.initializeApp(firebaseConfig);
+    fireDB = fbDb.getDatabase(app);
+    }catch(error){
+        console.log("Error loading firebase: vvvv");
+        console.log(error);
+    }
+
+}).catch(() => console.log("Firebase JSON load error"));
+
+// Set up the http server -- Moved to below db stuff so that we can be sure the database is loaded and connected before any requests are
+// made asynchronously through HTML.
+// TODO: Convert to https. This is seemingly not as simple as just changing 'http' to 'https' as we need an SSL certifciate to upgrade to HTTPS :/ 
+http.createServer(requestHandlerHTML).listen(8080);
+
 
 //const regExpAccounts = new RegExp('^\/accounts\/.*','i');
