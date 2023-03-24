@@ -102,14 +102,40 @@ var buttonFunc2 = function()
 }
 
 
-function validUser()
+function validUser(username, password)
 {
-    
+    if (username.trim() === '' || password.trim() === '') {
+    return false;
+  }
+
+  if (username.length < 6) {
+    return false;
+  }
+
+  if (password.length < 8) {
+    return false;
+  }
+
+  var hasUpperCase = /[A-Z]/.test(password);
+  var hasLowerCase = /[a-z]/.test(password);
+  var hasDigit = /\d/.test(password);
+  if (!hasUpperCase || !hasLowerCase || !hasDigit) {
+    return false;
+  }
+
+  return true;
 }
 
 function validPassword()
 {
-    
+  const password = document.getElementById("signinPassword").value;
+  const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+  const valid = regex.test(password);
+  
+  if (!valid) {
+    alert("Password must be at least 8 characters long and contain at least one letter, one number, and one symbol.");
+    document.getElementById("signinPassword").value = "";
+  }
 }
 
 
@@ -139,7 +165,7 @@ function signin()
     alert("Hello " + user + "!");
 }
 
-/*
+
 function createAccount(request, response, body)
 {
     let resMsg = {};
@@ -240,7 +266,6 @@ dbCon.connect(function(err)
         return
     }
 });
-*/
         </script>
         <a href="/">Home</a>
     </body>
