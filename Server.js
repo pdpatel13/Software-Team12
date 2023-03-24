@@ -226,7 +226,38 @@ const requestHandlerHTML = function(req, res){
         }
         
     }
-    
+    //A search bar that takes a keyword input and searches between products to find a match.
+    //Outputs an error message for 0 results
+    const searchBar = document.getElementById("search-bar");
+    const form = document.querySelector("form");
+    const searchResults = document.getElementById("search-results");
+
+    form.addEventListener("submit", (event) => {
+        event.preventDefault(); // prevent form submission
+
+        const searchTerm = newFunction_1(searchBar);
+
+        if (searchTerm.trim()) {
+            const searchQuery = newFunction(searchTerm);
+            newFunction_3(searchQuery)
+                .then((response) => response.json())
+                .then((data) => {
+                    // display the search results
+                    if (data.length > 0) {
+                        searchResults.innerHTML = "";
+                        data.forEach((result) => {
+                            const item = document.createElement("div");
+                            item.textContent = result;
+                            searchResults.appendChild(item);
+                        });
+                    } else {
+                        searchResults.innerHTML = "No results found.";
+                    }
+                })
+                .catch((error) => console.error(error));
+        }
+    });
+
 }
 
 //setting up mySQL database, still needs work
@@ -237,7 +268,7 @@ const dbCon = mysql.createConnection(
     {
         host:"localhost",
         user: "root",
-        password: "passwd" //change this to the password for your mysql root account
+        password: "passwrd" //change this to the password for your mysql root account
     }
 )
 
@@ -300,4 +331,24 @@ fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
 http.createServer(requestHandlerHTML).listen(8080);
 
 
+
+function newFunction(searchTerm) {
+    return newFunction_2(searchTerm);
+}
+
+function newFunction_3(searchQuery) {
+    return fetch(searchQuery);
+}
+
+function newFunction_2(searchTerm) {
+    return newFunction(searchTerm);
+}
+
+function newFunction_1(searchBar) {
+    return searchBar.value;
+}
+
+function newFunction(searchTerm) {
+    return `/search?q=${searchTerm}`;
+}
 //const regExpAccounts = new RegExp('^\/accounts\/.*','i');
