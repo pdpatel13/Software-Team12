@@ -9,6 +9,25 @@ var fsc = require('fs').constants;
 var fireBaseLoaded = false;
 var mysqlLoaded = false;
 
+//I made this so that the js document isn't so ugly with a bunch of handler functions that are largely made up of error handling/console logging. Hopefully this works well -Joey
+//This will not be useable in some cases where errors may be expected and checked for, so you will have to use a regular dbCon.query() for those scenarios instead.
+//Query is a string, normal SQL query. Log=true outputs result/err to console.log() false does opposite, and handler is handler function that takes 1 param: result 
+var compactSqlQuery = function(query, log=false, handler) {
+    dbCon.query(query, function(err, result){
+        if (err)
+        {
+            console.log("Error on query: ", query, " with message: ", err);
+            return; //I considered having this return false or true, but I figured since this can be a little asynch, it wouldn't be very useful in a (default) synchronous context.
+        } 
+        if(log)
+            console.log("Result: ", result);
+        if(handler != undefined)
+            handler(result);
+    });
+};
+
+//Demo here
+
 //The following functions: accounts, inventory, review, search, productName, category, orders, requests, and sales
 //are all of the topmost domains (i.e. website.com/accounts, or website.com/inventory). These will be called when
 //a request is made to the server that corresponds to each (e.g. uri: /search?sort_by=hdmi1&order=sortType=asc).
@@ -60,28 +79,10 @@ var requests = function(req, res, urlparts) {
 
 var sales = function(req, res, urlparts) {
     //Create sales report table if not already exists with mySQL:
-    /*
-    dbCon.query("IF NOT EXISTS (CREATE TABLE REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
-    "OrdersSinceLastReport INT(8), IncomeSinceLastReport MONEY, CurrentInventorySize INT(10), " + 
-    "ShrinkSinceLastReport INT(10), LossFromShrink MONEY, ReturnsSinceLastReport INT(8), ReturnPayouts MONEY))", function (err, result) {
-        if (err)
-        {
-            console.log(err);
-            return;
-        } 
-        console.log("Result: ", result);
-    });
-*/
-    dbCon.query("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
+
+    compactSqlQuery("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
     "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
-    "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", function (err, result) {
-        if (err)
-        {
-            console.log(err);
-            return;
-        } 
-        console.log("Result: ", result);
-    });
+    "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", false);
 
     if(urlparts[0].split("?").indexOf("nogen") == -1){
         console.log("Requested sales reports with yes generation.");
@@ -89,6 +90,7 @@ var sales = function(req, res, urlparts) {
 
         //Get highest reportID value in the table and continue from there:
         var newRepID;
+        
         dbCon.query("SELECT MAX(ReportID) FROM REPORT", function (err, result) {
             if (err || isNaN(result[0]['MAX(ReportID)']) || result[0]['MAX(ReportID)'] == undefined)
             {
@@ -98,34 +100,20 @@ var sales = function(req, res, urlparts) {
                 newRepID = result[0]['MAX(ReportID)'] + 1;
             }
             //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
-            dbCon.query("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", function (err, result) {
-                if (err)
-                {
-                    console.log(err);
-                    return;
-                } 
-                console.log("Result: ", result);
-            });
-        });
-
-        
+            compactSqlQuery("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", false);
+        });   
     }
 
     //Either way, request all the reports and send them to client
-    dbCon.query("SELECT * FROM REPORT", function (err, result) {
-        if (err)
-        {
-            console.log(err);
-            return;
-        } 
-        console.log("Result: ", result);
+    compactSqlQuery("SELECT * FROM REPORT", true, function (result) {
+        //TODO: Send info to HTML on client.
     });
 
 
     let resMsg = {};
     resMsg.code = 200;
     resMsg.headers = {"Content-Type" : "text/plain"};
-    resMsg.body = "Displaying sales example when you go to localhost:8080/sales. Firebase Status: " + fireBaseLoaded + " | mySQL Status: " + mysqlLoaded;
+    resMsg.body = "Temporary filler text";
     return resMsg;
     
 
