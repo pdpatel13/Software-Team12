@@ -79,44 +79,46 @@ var requests = function(req, res, urlparts) {
 
 var sales = function(req, res, urlparts) {
     //Create sales report table if not already exists with mySQL:
+    if(req.method === "GET"){
+        compactSqlQuery("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
+        "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
+        "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", false);
+        if(urlparts[urlparts.length-1].split("?").indexOf("nogen") == -1){
+            console.log("Requested sales reports with yes generation.");
+            //YES, DO GENERATE NEW SALES REPORT IN THIS CONDITION
 
-    compactSqlQuery("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
-    "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
-    "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", false);
+            //Get highest reportID value in the table and continue from there:
+            var newRepID;
+            
+            dbCon.query("SELECT MAX(ReportID) FROM REPORT", function (err, result) {
+                if (err || isNaN(result[0]['MAX(ReportID)']) || result[0]['MAX(ReportID)'] == undefined)
+                {
+                    console.log(err, "res: ", result[0]['MAX(ReportID)']);
+                    newRepID = 0;
+                }else {
+                    newRepID = result[0]['MAX(ReportID)'] + 1;
+                }
+                //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
+                compactSqlQuery("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", false);
+            });   
+        }
 
-    if(urlparts[0].split("?").indexOf("nogen") == -1){
-        console.log("Requested sales reports with yes generation.");
-        //YES, DO GENERATE NEW SALES REPORT IN THIS CONDITION
+        //Either way, request all the reports and send them to client
+        compactSqlQuery("SELECT * FROM REPORT", false, function (result) {
+            //TODO: Send info to HTML on client.
+        });
 
-        //Get highest reportID value in the table and continue from there:
-        var newRepID;
+
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
         
-        dbCon.query("SELECT MAX(ReportID) FROM REPORT", function (err, result) {
-            if (err || isNaN(result[0]['MAX(ReportID)']) || result[0]['MAX(ReportID)'] == undefined)
-            {
-                console.log(err, "res: ", result[0]['MAX(ReportID)']);
-                newRepID = 0;
-            }else {
-                newRepID = result[0]['MAX(ReportID)'] + 1;
-            }
-            //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
-            compactSqlQuery("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", false);
-        });   
+
+    }else if(req.method === "POST"){
+        //This is just here as a matter of template-- there is no reason right now to make a POST request to sales.
     }
-
-    //Either way, request all the reports and send them to client
-    compactSqlQuery("SELECT * FROM REPORT", true, function (result) {
-        //TODO: Send info to HTML on client.
-    });
-
-
-    let resMsg = {};
-    resMsg.code = 200;
-    resMsg.headers = {"Content-Type" : "text/plain"};
-    resMsg.body = "Temporary filler text";
-    return resMsg;
-    
-
 }
 
 //This requestHandler is currently built to respond to expected HTTP requests. Some unexpected http requests (i.e. requests
@@ -226,6 +228,8 @@ const requestHandlerHTML = function(req, res){
         }
         
     }
+
+    /*
     //A search bar that takes a keyword input and searches between products to find a match.
     //Outputs an error message for 0 results
     const searchBar = document.getElementById("search-bar");
@@ -257,7 +261,7 @@ const requestHandlerHTML = function(req, res){
                 .catch((error) => console.error(error));
         }
     });
-
+*/
 }
 
 //setting up mySQL database, still needs work
@@ -268,7 +272,7 @@ const dbCon = mysql.createConnection(
     {
         host:"localhost",
         user: "root",
-        password: "passwrd" //change this to the password for your mysql root account
+        password: "passwd" //change this to the password for your mysql root account
     }
 )
 
