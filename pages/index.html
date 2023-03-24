@@ -11,10 +11,11 @@
         <a href="/about">About</a>
         <a href="/404">404 Demo</a>
         <a href="/accounts">Accounts</a>
+        <a href="/reports">Reports</a>
         
         <!-- This button calls buttonFunc in the script region below, and the <p> block has id demo so the js script
             can locate it -->
-        <button onclick="buttonFunc()">Sales Example Output (via function)</button>
+        <button onclick="buttonFunc()">Get Database Status</button>
         <p id="demo"></p>
 
         <!-- window.location.href gets current URL in browser, this is template for updating element in page
@@ -22,7 +23,7 @@
             page/response -->
         <script>
             var buttonFunc = function(){
-                fetch( window.location.href + "/sales", {method: "GET", headers: {"Content-Type": "text/plain"}}).then(
+                fetch( window.location.href + "/dbStatus", {method: "GET", headers: {"Content-Type": "text/plain"}}).then(
                     response => {
                         response.text().then(text => {
                             document.getElementById("demo").textContent = text;
