@@ -5,13 +5,21 @@ var http = require('http');
 var fs  = require('fs').promises; //We use fs to read html files
 var fsc = require('fs').constants;
 
+// USE THESE BOOLS TO DETERMINE IF THE DATABASES ARE LOADED AND AVAILABLE. TRUE MEANS YES. FALSE MEANS NO, EITHER WAIT OR SOMETHING'S WRONG.
+var fireBaseLoaded = false;
+var mysqlLoaded = false;
+
 //The following functions: accounts, inventory, review, search, productName, category, orders, requests, and sales
 //are all of the topmost domains (i.e. website.com/accounts, or website.com/inventory). These will be called when
 //a request is made to the server that corresponds to each (e.g. uri: /search?sort_by=hdmi1&order=sortType=asc).
-//
+
 //In other words, these functions are where the crossing between database and server should happen.
-var accounts = function(req, res, urlparts) {
+var dbstatus = function(req, res, urlparts) {
     let resMsg = {};
+    
+    resMsg.code = 200;
+    resMsg.headers = {"Content-Type" : "text/plain"};
+    resMsg.body = "mySQL: " + mysqlLoaded + "\nfirebase: " + fireBaseLoaded;
     return resMsg;
 };
 
@@ -51,16 +59,80 @@ var requests = function(req, res, urlparts) {
 }
 
 var sales = function(req, res, urlparts) {
+    //Create sales report table if not already exists with mySQL:
+    /*
+    dbCon.query("IF NOT EXISTS (CREATE TABLE REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
+    "OrdersSinceLastReport INT(8), IncomeSinceLastReport MONEY, CurrentInventorySize INT(10), " + 
+    "ShrinkSinceLastReport INT(10), LossFromShrink MONEY, ReturnsSinceLastReport INT(8), ReturnPayouts MONEY))", function (err, result) {
+        if (err)
+        {
+            console.log(err);
+            return;
+        } 
+        console.log("Result: ", result);
+    });
+*/
+    dbCon.query("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
+    "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
+    "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", function (err, result) {
+        if (err)
+        {
+            console.log(err);
+            return;
+        } 
+        console.log("Result: ", result);
+    });
+
+    if(urlparts[0].split("?").indexOf("nogen") == -1){
+        console.log("Requested sales reports with yes generation.");
+        //YES, DO GENERATE NEW SALES REPORT IN THIS CONDITION
+
+        //Get highest reportID value in the table and continue from there:
+        var newRepID;
+        dbCon.query("SELECT MAX(ReportID) FROM REPORT", function (err, result) {
+            if (err || isNaN(result[0]['MAX(ReportID)']) || result[0]['MAX(ReportID)'] == undefined)
+            {
+                console.log(err, "res: ", result[0]['MAX(ReportID)']);
+                newRepID = 0;
+            }else {
+                newRepID = result[0]['MAX(ReportID)'] + 1;
+            }
+            //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
+            dbCon.query("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", function (err, result) {
+                if (err)
+                {
+                    console.log(err);
+                    return;
+                } 
+                console.log("Result: ", result);
+            });
+        });
+
+        
+    }
+
+    //Either way, request all the reports and send them to client
+    dbCon.query("SELECT * FROM REPORT", function (err, result) {
+        if (err)
+        {
+            console.log(err);
+            return;
+        } 
+        console.log("Result: ", result);
+    });
+
+
     let resMsg = {};
     resMsg.code = 200;
     resMsg.headers = {"Content-Type" : "text/plain"};
-    resMsg.body = "Displaying sales example when you go to localhost:8080/sales";
+    resMsg.body = "Displaying sales example when you go to localhost:8080/sales. Firebase Status: " + fireBaseLoaded + " | mySQL Status: " + mysqlLoaded;
     return resMsg;
+    
+
 }
 
 //This requestHandler is currently built to respond to expected HTTP requests. Some unexpected http requests (i.e. requests
 //for which no function is defined above) may also have responses in the form of HTML pages (like "/about").
-//TODO: Implement database interactions, which also requires implementation of request method-checking.
 const requestHandlerHTML = function(req, res){
     //Split up the received uri
     let urlparts = [];
@@ -76,15 +148,12 @@ const requestHandlerHTML = function(req, res){
     let done = false;
     let resMsg = {};
 
-    // Accounts is currently commented out as a function so that this section will pass with good = false, so that
-    // /pages/accounts.html will be picked up and used by the html redirector below and used instead.
-
-    /*try{
-        if(done === false && /\/accounts/.test(req.url)){
-            resMsg = accounts(req, res, urlparts);
+    try{
+        if(done === false && /\/dbStatus/.test(req.url)){
+            resMsg = dbstatus(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};*/
+    }catch(exc){};
 
     try{
         if(done === false && /\/inventory/.test(req.url)){
@@ -176,7 +245,6 @@ const requestHandlerHTML = function(req, res){
 //from lec8 REST server example slides
 const querystr = require('querystring');
 const mysql = require("mysql2");
-const port = (process.env.PORT || 3307); //8080?
 const dbCon = mysql.createConnection(
     {
         host:"localhost",
@@ -211,6 +279,8 @@ dbCon.connect(function(err)
             console.log("Result: ", result);
         });
     }
+
+    mysqlLoaded = true;
 });
 
 
@@ -221,22 +291,19 @@ var fbApp = require("firebase/app");
 var fbDb = require("firebase/database");
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 var app, fireDB;
 fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
-    firebaseJSON = contents
-
-    const firebaseConfig = JSON.parse(firebaseJSON);
+    const firebaseConfig = JSON.parse(contents);
 
     // Initialize Firebase
     try{
-    app = fbApp.initializeApp(firebaseConfig);
-    fireDB = fbDb.getDatabase(app);
+        app = fbApp.initializeApp(firebaseConfig);
+        fireDB = fbDb.getDatabase(app);
+        fireBaseLoaded = true;
     }catch(error){
         console.log("Error loading firebase: vvvv");
         console.log(error);
     }
-
 }).catch(() => console.log("Firebase JSON load error"));
 
 // Set up the http server -- Moved to below db stuff so that we can be sure the database is loaded and connected before any requests are
