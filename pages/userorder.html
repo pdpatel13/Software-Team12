@@ -79,22 +79,24 @@
                         "Accept": "application/json",
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify(orderObject)
+                    body: JSON.stringify(orderObject)   //This is whatever body is sent with the POST (if JSON be sure to stringify it. You do NOT need to JSON Parse() on the Serverside, it
+                                                        //gets parsed by express.js automatically, so serverside in the handler when you do req.body it is already a javascript object)
                 };
 
                 fetch(window.location.href + "/makeorder", reqHTTP).then(
                     response => {
                         response.text().then(text => {
-                    document.getElementById("ordStatus").textContent = text;
+                            //This is the response from the server
+                            document.getElementById("ordStatus").textContent = text;
                         });
                     }
                 ).catch(error => console.log(error));
             };
 
             var newItem = function(){
-                document.getElementById("itemEntryAll").innerHTML = document.getElementById("itemEntryAll").innerHTML +
+                document.getElementById("itemEntryAll").insertAdjacentHTML("beforeend",
                     "<div class=\"itemEntryIndividual\"><label for=\"itemID\">Item ID:</label><input type=\"text\" class=\"itemID\" name=\"itemID\"><label for=\"price\">Item Price:</label>" +
-                    "<input type=\"text\" class=\"price\" name=\"price\"><label for=\"qty\">Quantity:</label><input type=\"text\" class=\"qty\" name=\"qty\"></div>";
+                    "<input type=\"text\" class=\"price\" name=\"price\"><label for=\"qty\">Quantity:</label><input type=\"text\" class=\"qty\" name=\"qty\"></div>");
             }
         </script> <!-- Note that both fetch() and text() return promises, so they have to be "then"-ed and caught. -->
     </body>
