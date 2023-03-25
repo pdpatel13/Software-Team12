@@ -5,6 +5,9 @@ var http = require('http');
 var fs  = require('fs').promises; //We use fs to read html files
 var fsc = require('fs').constants;
 
+const express = require('express');
+const app = express();
+
 // USE THESE BOOLS TO DETERMINE IF THE DATABASES ARE LOADED AND AVAILABLE. TRUE MEANS YES. FALSE MEANS NO, EITHER WAIT OR SOMETHING'S WRONG.
 var fireBaseLoaded = false;
 var mysqlLoaded = false;
@@ -68,8 +71,36 @@ var category = function(req, res,urlparts) {
 };
 
 var orders = function(req, res, urlparts) {
-    let resMsg = {};
-    return resMsg;
+    console.log("we made it: ", req.body);
+    if(req.method === "POST"){
+        let newOrderID = 0;
+        //Push data from json data inside request to firedb.
+        let body = req.body;
+
+        console.log(body);
+
+        //See sampleOrdersDB.json for structure inside db
+
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Order placed with ID: " + newOrderID;
+        return resMsg;
+
+    }else if(req.method === "GET"){
+
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }else {
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }
 };
 
 var requests = function(req, res, urlparts) {
@@ -118,6 +149,17 @@ var sales = function(req, res, urlparts) {
 
     }else if(req.method === "POST"){
         //This is just here as a matter of template-- there is no reason right now to make a POST request to sales.
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }else {
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
     }
 }
 
@@ -143,65 +185,49 @@ const requestHandlerHTML = function(req, res){
             resMsg = dbstatus(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-    try{
+    
         if(done === false && /\/inventory/.test(req.url)){
             resMsg = inventory(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};   
-
-    try{
+    
         if(done === false && /\/search/.test(req.url)){
             resMsg = search(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};   
-
-    try{
+    
         if(done === false && /\/review/.test(req.url)){
             resMsg = review(req, res, urlparts);
             done = true;
         }
-    }catch(exc){}; 
-
-    try{
+    
         if(done === false && /\/productName/.test(req.url)){
             resMsg = productName(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-    try{
+    
         if(done === false && /\/category/.test(req.url)){
             resMsg = category(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-    try{
-        if(done === false && /\/orders/.test(req.url)){
+    
+        if(done === false && /\/makeorder/.test(req.url)){
             resMsg = orders(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-
-    try{
+    
         if(done === false && /\/requests/.test(req.url)){
             resMsg = requests(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-
-    try{
+    
         if(done === false && /\/sales/.test(req.url)){
             resMsg = sales(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
+    }catch(exc){
+        console.log("Uh oh! Something's wrong with the request routing for ", req.url, " ", req.method, " | Error: ", exc);
+    };
 
     if(done){
         res.writeHead(resMsg.code, resMsg.headers),
@@ -314,14 +340,14 @@ var fbApp = require("firebase/app");
 var fbDb = require("firebase/database");
 
 // Your web app's Firebase configuration
-var app, fireDB;
+var fireApp, fireDB;
 fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
     const firebaseConfig = JSON.parse(contents);
 
     // Initialize Firebase
     try{
-        app = fbApp.initializeApp(firebaseConfig);
-        fireDB = fbDb.getDatabase(app);
+        fireApp = fbApp.initializeApp(firebaseConfig);
+        fireDB = fbDb.getDatabase(fireApp);
         fireBaseLoaded = true;
     }catch(error){
         console.log("Error loading firebase: vvvv");
@@ -332,8 +358,11 @@ fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
 // Set up the http server -- Moved to below db stuff so that we can be sure the database is loaded and connected before any requests are
 // made asynchronously through HTML.
 // TODO: Convert to https. This is seemingly not as simple as just changing 'http' to 'https' as we need an SSL certifciate to upgrade to HTTPS :/ 
-http.createServer(requestHandlerHTML).listen(8080);
 
+
+//http.createServer(requestHandlerHTML).listen(8080);
+app.use(express.json(), requestHandlerHTML);
+app.listen(8080);
 
 
 function newFunction(searchTerm) {
