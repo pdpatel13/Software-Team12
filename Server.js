@@ -1,30 +1,17 @@
 // To run, make sure you have Node installed and run 'node Server.js'. To access the webpage itself, go to
 // localhost:8080 in your browser.
 
+// I moved all of these dependencies to the top so it is easy to see which
+// must be installed externally to run the server on your dev computer.
+// Those are labeled with comments with what terminal command to use to install.
 var http = require('http');
-var fs  = require('fs').promises; //We use fs to read html files
+var fs  = require('fs').promises; 
 var fsc = require('fs').constants;
-
-// USE THESE BOOLS TO DETERMINE IF THE DATABASES ARE LOADED AND AVAILABLE. TRUE MEANS YES. FALSE MEANS NO, EITHER WAIT OR SOMETHING'S WRONG.
-var fireBaseLoaded = false;
-var mysqlLoaded = false;
-
-//I made this so that the js document isn't so ugly with a bunch of handler functions that are largely made up of error handling/console logging. Hopefully this works well -Joey
-//This will not be useable in some cases where errors may be expected and checked for, so you will have to use a regular dbCon.query() for those scenarios instead.
-//Query is a string, normal SQL query. Log=true outputs result/err to console.log() false does opposite, and handler is handler function that takes 1 param: result 
-var compactSqlQuery = function(query, log=false, handler) {
-    dbCon.query(query, function(err, result){
-        if (err)
-        {
-            console.log("Error on query: ", query, " with message: ", err);
-            return; //I considered having this return false or true, but I figured since this can be a little asynch, it wouldn't be very useful in a (default) synchronous context.
-        } 
-        if(log)
-            console.log("Result: ", result);
-        if(handler != undefined)
-            handler(result);
-    });
-};
+const express = require('express');         //npm install express --save
+const querystr = require('querystring');    
+const mysql = require("mysql2");            //npm install mysql2
+const fbApp = require("firebase/app");      //npm install firebase
+const fdb = require("firebase/database");  //npm install firebase
 
 //Demo here
 
@@ -67,9 +54,62 @@ var category = function(req, res,urlparts) {
     return resMsg;
 };
 
+var currentOrderID;
 var orders = function(req, res, urlparts) {
-    let resMsg = {};
-    return resMsg;
+    if(req.method === "POST"){
+        //Push data from json data inside request to firedb.
+        let body = req.body;
+        let newOrderID = currentOrderID + 1;
+
+        //calculate relevant metrics: total cost, timestamp, total qty
+        let totalcost = 0, totalqty = 0, timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        
+        for(let itemID in body){
+            if(itemID === "userID")
+                continue;
+            totalqty += body[itemID].qty;
+            totalcost += body[itemID].price * body[itemID].qty;
+
+            //Also we're gonna add each item to the orderItems tree while we're
+            //iterating, why not?!
+            fdb.update(fdb.ref(fireDB, "orders/orderItems/" + newOrderID), {
+                [itemID] : body[itemID].qty
+            })
+        }
+
+        //See sampleOrdersDB.json for structure inside db
+        fdb.set(fdb.ref(fireDB, "orders/ordermetadata/" + newOrderID), {
+            userid : "0",
+            cost : totalcost,
+            timestamp : timestamp,
+            orderStatus : "placed",
+            size : totalqty 
+        })
+
+        fdb.set(fdb.ref(fireDB, "orders/newestOrderId"), newOrderID);
+
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Order placed with ID: " + newOrderID;
+        return resMsg;
+
+
+
+    }else if(req.method === "GET"){
+
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }else {
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }
 };
 
 var requests = function(req, res, urlparts) {
@@ -119,6 +159,17 @@ var sales = function(req, res, urlparts) {
 
     }else if(req.method === "POST"){
         //This is just here as a matter of template-- there is no reason right now to make a POST request to sales.
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }else {
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
     }
 }
 
@@ -155,72 +206,54 @@ const requestHandlerHTML = function(req, res){
             resMsg = dbstatus(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
 
-    try{
         if(done === false && /\/accounts/.test(req.url)){
-            resMsg = accounts(req, res, urlparts);
-            done = true;
+            //resMsg = accounts(req, res, urlparts);
+            //done = true;
         }
-    }catch(exc){};
 
-    try{
         if(done === false && /\/inventory/.test(req.url)){
             resMsg = inventory(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};   
-
-    try{
+    
         if(done === false && /\/search/.test(req.url)){
             resMsg = search(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};   
-
-    try{
+    
         if(done === false && /\/review/.test(req.url)){
             resMsg = review(req, res, urlparts);
             done = true;
         }
-    }catch(exc){}; 
-
-    try{
+    
         if(done === false && /\/productName/.test(req.url)){
             resMsg = productName(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-    try{
+    
         if(done === false && /\/category/.test(req.url)){
             resMsg = category(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-    try{
-        if(done === false && /\/orders/.test(req.url)){
+    
+        if(done === false && /\/makeorder/.test(req.url)){
             resMsg = orders(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-
-    try{
+    
         if(done === false && /\/requests/.test(req.url)){
             resMsg = requests(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-
-    try{
+    
         if(done === false && /\/sales/.test(req.url)){
             resMsg = sales(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
+    }catch(exc){
+        console.log("Uh oh! Something's wrong in the request routing for ", req.url, " ", req.method, " | Error: ", exc);
+    };
 
     if(done){
         res.writeHead(resMsg.code, resMsg.headers),
@@ -287,7 +320,6 @@ const requestHandlerHTML = function(req, res){
 //from lec8 REST server example slides
 const querystr = require('querystring');
 const mysql = require("mysql2");
-const passwd = require('./password.json');
 const dbCon = mysql.createConnection(
     {
         host:"localhost",
@@ -326,34 +358,63 @@ dbCon.connect(function(err)
     mysqlLoaded = true;
 });
 
-
 //Set up firebase for noSQL db usage
 //TODO: IF YOU HAVE NOT YET DOWNLOADED THE API KEY FILE FROM DISCORD, DO SO AND DROP IT INTO THE SAME FOLDER AS SERVER.JS. DO NOT DISTRIBUTE THAT FILE.
-// Import the functions you need from the SDKs you need
-var fbApp = require("firebase/app");
-var fbDb = require("firebase/database");
-
 // Your web app's Firebase configuration
-var app, fireDB;
+var fireApp, fireDB;
 fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
     const firebaseConfig = JSON.parse(contents);
 
     // Initialize Firebase
     try{
-        app = fbApp.initializeApp(firebaseConfig);
-        fireDB = fbDb.getDatabase(app);
+        fireApp = fbApp.initializeApp(firebaseConfig);
+        fireDB = fdb.getDatabase(fireApp);
         fireBaseLoaded = true;
+
+        //Google reccomends listening for changes to values instead of
+        //getting them every time you need them.
+        currentOrderID = 0;
+        const starCountRef = fdb.ref(fireDB, 'orders/newestOrderId');
+        fdb.onValue(starCountRef, (snapshot) => {currentOrderID = snapshot.val()});
+
     }catch(error){
         console.log("Error loading firebase: vvvv");
         console.log(error);
     }
 }).catch(() => console.log("Firebase JSON load error"));
 
+const app = express();
+
+// USE THESE BOOLS TO DETERMINE IF THE DATABASES ARE LOADED AND AVAILABLE. TRUE MEANS YES. FALSE MEANS NO, EITHER WAIT OR SOMETHING'S WRONG.
+var fireBaseLoaded = false;
+var mysqlLoaded = false;
+
+//I made this so that the js document isn't so ugly with a bunch of handler functions that are largely made up of error handling/console logging. Hopefully this works well -Joey
+//This will not be useable in some cases where errors may be expected and checked for, so you will have to use a regular dbCon.query() for those scenarios instead.
+//Query is a string, normal SQL query. Log=true outputs result/err to console.log() false does opposite, and handler is handler function that takes 1 param: result 
+var compactSqlQuery = function(query, log=false, handler) {
+    dbCon.query(query, function(err, result){
+        if (err)
+        {
+            console.log("Error on query: ", query, " with message: ", err);
+            return; //I considered having this return false or true, but I figured since this can be a little asynch, it wouldn't be very useful in a (default) synchronous context.
+        } 
+        if(log)
+            console.log("Result: ", result);
+        if(handler != undefined)
+            handler(result);
+    });
+};
+
+
 // Set up the http server -- Moved to below db stuff so that we can be sure the database is loaded and connected before any requests are
 // made asynchronously through HTML.
 // TODO: Convert to https. This is seemingly not as simple as just changing 'http' to 'https' as we need an SSL certifciate to upgrade to HTTPS :/ 
-http.createServer(requestHandlerHTML).listen(8080);
 
+
+//http.createServer(requestHandlerHTML).listen(8080);
+app.use(express.json(), requestHandlerHTML);
+app.listen(8080);
 
 
 function newFunction(searchTerm) {

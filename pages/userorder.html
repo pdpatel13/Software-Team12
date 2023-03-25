@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BB-Reports</title>
+    </head>
+    
+    <body>
+        <!-- This is just for navigation of the sample pages. -->
+        <p>This is the reports page.</p>
+        <a href="/about">About</a>
+        <a href="/404">404 Demo</a>
+        <a href="/accounts">Accounts</a>
+        <a href="/products">Products</a>
+        
+        <!-- This button calls buttonFunc in the script region below, and the <p> block has id demo so the js script
+            can locate it -->
+        <button onclick="placeOrder()">Place Order</button>
+        <button onclick="newItem()">New Empty Item</button>
+
+        <p id="ordStatus"></p>
+
+        <div id="itemEntryAll"
+            <div class="itemEntryIndividual">
+                <label for="itemID">Item ID:</label>
+                <input type="text" class="itemID" name="itemID">
+                <label for="price">Item Price:</label>
+                <input type="text" class="price" name="price">
+                <label for="qty">Quantity:</label>
+                <input type="text" class="qty" name="qty">
+            </div>
+        </div>
+
+
+        <!-- window.location.href gets current URL in browser, this is template for updating element in page
+            with a response from the server, as opposed to the server completely overwriting the currently loaded
+            page/response -->
+        <script>
+            var placeOrder = function(){
+                //I'm 50/50 on if this is entirely appropriate for GET method. On one hand, no actual info is being added to the server/db,
+                //it just crunches some numbers when this request is made. But on the other, those numbers are generated (albeit serverside, not clientside).
+
+                var orderObject = {};
+                
+                var badPrice = false;
+
+                var elFunc = function(element){
+                    let itemID = ""+element.getElementsByClassName("itemID")[0].value;
+                    let price = element.getElementsByClassName("price")[0].value;
+                    let qty = element.getElementsByClassName("qty")[0].value;
+
+                    if(isNaN(price)){
+                        document.getElementById("ordStatus").textContent = "One of your listed prices is NOT a valid number. Did not place order.";
+                        badPrice = true;
+                        return;
+                    }
+
+                    orderObject[itemID] = {};
+                    orderObject[itemID].price = price;
+                    orderObject[itemID].qty = qty;
+                }
+
+                textboxes = document.getElementsByClassName("itemEntryIndividual");
+                console.log(textboxes);
+                for(let i = 0; i < textboxes.length; i++){
+                    elFunc(textboxes[i]);
+                }
+
+                if(badPrice){
+                    return;
+                }
+
+                orderObject.userID = 0; //temp value, get from accounts db when available
+
+                console.log(orderObject);
+
+                var reqHTTP = {
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(orderObject)   //This is whatever body is sent with the POST (if JSON be sure to stringify it. You do NOT need to JSON Parse() on the Serverside, it
+                                                        //gets parsed by express.js automatically, so serverside in the handler when you do req.body it is already a javascript object)
+                };
+
+                fetch(window.location.href + "/makeorder", reqHTTP).then(
+                    response => {
+                        response.text().then(text => {
+                            //This is the response from the server
+                            document.getElementById("ordStatus").textContent = text;
+                        });
+                    }
+                ).catch(error => console.log(error));
+            };
+
+            var newItem = function(){
+                document.getElementById("itemEntryAll").insertAdjacentHTML("beforeend",
+                    "<div class=\"itemEntryIndividual\"><label for=\"itemID\">Item ID:</label><input type=\"text\" class=\"itemID\" name=\"itemID\"><label for=\"price\">Item Price:</label>" +
+                    "<input type=\"text\" class=\"price\" name=\"price\"><label for=\"qty\">Quantity:</label><input type=\"text\" class=\"qty\" name=\"qty\"></div>");
+            }
+        </script> <!-- Note that both fetch() and text() return promises, so they have to be "then"-ed and caught. -->
+    </body>
+</html>
