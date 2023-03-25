@@ -287,11 +287,12 @@ const requestHandlerHTML = function(req, res){
 //from lec8 REST server example slides
 const querystr = require('querystring');
 const mysql = require("mysql2");
+const passwd = require('./password.json');
 const dbCon = mysql.createConnection(
     {
         host:"localhost",
         user: "root",
-        password: "passwd" //change this to the password for your mysql root account
+        password: passwd.password //change this to the password for your mysql root account
     }
 )
 
