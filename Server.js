@@ -108,6 +108,7 @@ var requests = function(req, res, urlparts) {
     return resMsg;
 }
 
+
 var sales = function(req, res, urlparts) {
     //Create sales report table if not already exists with mySQL:
     if(req.method === "GET"){
@@ -163,6 +164,17 @@ var sales = function(req, res, urlparts) {
     }
 }
 
+var createAccount = function(req, res, urlparts) {
+    compactSqlQuery
+    (
+        "INSERT INTO `Account Database`\
+        (`UserID`, `UserName`, `Email`, `Password`) \
+        VALUES \
+        (1, 'D4', 'deaningramiv@gmail.com', '1234');",
+        false
+    );    
+
+}
 //This requestHandler is currently built to respond to expected HTTP requests. Some unexpected http requests (i.e. requests
 //for which no function is defined above) may also have responses in the form of HTML pages (like "/about").
 const requestHandlerHTML = function(req, res){
@@ -185,7 +197,12 @@ const requestHandlerHTML = function(req, res){
             resMsg = dbstatus(req, res, urlparts);
             done = true;
         }
-    
+
+        if(done === false && /\/accounts/.test(req.url)){
+            //resMsg = accounts(req, res, urlparts);
+            //done = true;
+        }
+        
         if(done === false && /\/inventory/.test(req.url)){
             resMsg = inventory(req, res, urlparts);
             done = true;
