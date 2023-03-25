@@ -318,8 +318,7 @@ const requestHandlerHTML = function(req, res){
 
 //setting up mySQL database, still needs work
 //from lec8 REST server example slides
-const mysql = require("mysql2");
-const passwd = require("/password.json")
+const passwd = require("./password.json")
 const dbCon = mysql.createConnection(
     {
         host:"localhost",
