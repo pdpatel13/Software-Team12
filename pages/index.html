@@ -25,7 +25,15 @@
             page/response -->
         <script>
             var buttonFunc = function(){
-                fetch( window.location.href + "/dbStatus", {method: "GET", headers: {"Content-Type": "text/plain"}}).then(
+                
+                let testHTTP = {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "text/plain"
+                    }
+                };
+                
+                fetch( window.location.href + "/dbStatus", testHTTP).then(
                     response => {
                         response.text().then(text => {
                             document.getElementById("demo").textContent = text;
