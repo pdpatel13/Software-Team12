@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Bar Example</title>
+</head>
+<body>
+    <form>
+        <input type="text" id="search-bar" placeholder="Search...">
+        <button type="submit">Search</button>
+    </form>
+    <div id="search-results"></div>
+
+    <script>
+      const searchBar = document.getElementById("search-bar");
+      const form = document.querySelector("form");
+      const searchResults = document.getElementById("search-results");
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault(); // prevent form submission
+
+        const searchTerm = searchBar.value;
+
+        if (searchTerm.trim()) {
+          // if the search term is not empty or just whitespace
+          const searchQuery = `/search?q=${searchTerm}`;
+
+          
+          fetch(searchQuery)
+            .then((response) => response.json())
+            .then((data) => {
+              // display the search results
+              if (data.length > 0) {
+                searchResults.innerHTML = "";
+                data.forEach((result) => {
+                  const item = document.createElement("div");
+                  item.textContent = result;
+                  searchResults.appendChild(item);
+                });
+              } else {
+                searchResults.innerHTML = "No results found.";
+              }
+            })
+            .catch((error) => console.error(error));
+        }
+      });
+    </script>
+</body>
+</html>

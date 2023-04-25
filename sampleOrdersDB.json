@@ -1,0 +1,35 @@
+NOTE: THIS FILE IS NOT A USEABLE JSON. THIS IS ONLY HERE AS A REFERENCE FOR THE ORDERS DATABASE SCHEMA.
+I FOLLOWED GOOGLE'S GUIDANCE ON DATA FLATTENING: firebase.google.com/docs/database/web/structure-data
+NOTE: IT'D BE OPTIMAL FOR EACH USER IN THE USER DB TO ALSO STORE THEIR PLACED ORDER IDS (NOTHING ELSE FROM ORDERS) SOMEHOW, MAYBE A STRINGIFIED JSON OR SOMETHING.
+{
+    "newestOrderID":1,
+
+    "totalNumberOrders": 2,
+
+    "orderMetadata":{
+        "0":{
+            "userID": "miranda27",
+            "cost": 37.44,
+            "timestamp": "2023-03-24 17:17:15",
+            "status": "delivered",
+            "size": 2 (assuming qty of both items is 1)
+        },
+        "1":{
+            "userID": "barackobama1",
+            "cost": 72.98,
+            "timestamp": "2023-03-25 15:23:12",
+            "status": "placed",
+            "size": 1 (assuming qty item is 1)
+        }
+    },
+    
+    "orderItems":{
+        "0":{
+            "itemID1 (numerical)": "quantity (numerical not string)",
+            "itemID2 (numerical)": "quantity (numerical not string)"
+        },
+        "1":{
+            "itemID1 (numerical)": "quantity (numerical not string)"
+        }
+    }
+}

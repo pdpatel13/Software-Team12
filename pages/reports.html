@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BB-Reports</title>
+        <h1>Welcome to Bestest Buy</h1>
+    </head>
+    
+    <body>
+        <!-- This is just for navigation of the sample pages. -->
+        <p>This is the reports page.</p>
+        <a href="/about">About</a>
+        <a href="/404">404 Demo</a>
+        <a href="/accounts">Accounts</a>
+        <a href="/products">Products</a>
+        
+        <!-- This button calls buttonFunc in the script region below, and the <p> block has id demo so the js script
+            can locate it -->
+        <button onclick="genReports()">Generate Sales Report</button>
+        <button onclick="refReports()">Refresh Reports</button>
+        <p id="repStatus"></p>
+
+        <!-- window.location.href gets current URL in browser, this is template for updating element in page
+            with a response from the server, as opposed to the server completely overwriting the currently loaded
+            page/response -->
+        <script>
+            var genReports = function(){
+                //I'm 50/50 on if this is entirely appropriate for GET method. On one hand, no actual info is being added to the server/db,
+                //it just crunches some numbers when this request is made. But on the other, those numbers are generated (albeit serverside, not clientside).
+                fetch( window.location.href + "/sales", {method: "GET", headers: {"Content-Type": "application/json"}}).then(
+                    response => {
+                        response.text().then(text => {
+                            document.getElementById("repStatus").textContent = text;
+                        })
+                    }
+                );
+            };
+
+            var refReports = function(){
+                fetch( window.location.href + "/sales?nogen", {method: "GET", headers: {"Content-Type": "application/json"}}).then(
+                    response => {
+                        response.text().then(text => {
+                            document.getElementById("demo").textContent = text;
+                        })
+                    }
+                );
+            };
+        </script> <!-- Note that both fetch() and text() return promises, so they have to be "then"-ed and caught. -->
+    </body>
+</html>

@@ -1,17 +1,31 @@
 // To run, make sure you have Node installed and run 'node Server.js'. To access the webpage itself, go to
 // localhost:8080 in your browser.
 
+// I moved all of these dependencies to the top so it is easy to see which
+// must be installed externally to run the server on your dev computer.
+// Those are labeled with comments with what terminal command to use to install.
 var http = require('http');
-var fs  = require('fs').promises; //We use fs to read html files
+var fs  = require('fs').promises; 
 var fsc = require('fs').constants;
+const express = require('express');         //npm install express --save
+const querystr = require('querystring');    
+const mysql = require("mysql2");            //npm install mysql2
+const fbApp = require("firebase/app");      //npm install firebase
+const fdb = require("firebase/database");  //npm install firebase
+
+//Demo here
 
 //The following functions: accounts, inventory, review, search, productName, category, orders, requests, and sales
 //are all of the topmost domains (i.e. website.com/accounts, or website.com/inventory). These will be called when
 //a request is made to the server that corresponds to each (e.g. uri: /search?sort_by=hdmi1&order=sortType=asc).
-//
+
 //In other words, these functions are where the crossing between database and server should happen.
-var accounts = function(req, res, urlparts) {
+var dbstatus = function(req, res, urlparts) {
     let resMsg = {};
+    
+    resMsg.code = 200;
+    resMsg.headers = {"Content-Type" : "text/plain"};
+    resMsg.body = "mySQL: " + mysqlLoaded + "\nfirebase: " + fireBaseLoaded;
     return resMsg;
 };
 
@@ -40,9 +54,62 @@ var category = function(req, res,urlparts) {
     return resMsg;
 };
 
+var currentOrderID;
 var orders = function(req, res, urlparts) {
-    let resMsg = {};
-    return resMsg;
+    if(req.method === "POST"){
+        //Push data from json data inside request to firedb.
+        let body = req.body;
+        let newOrderID = currentOrderID + 1;
+
+        //calculate relevant metrics: total cost, timestamp, total qty
+        let totalcost = 0, totalqty = 0, timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        
+        for(let itemID in body){
+            if(itemID === "userID")
+                continue;
+            totalqty += body[itemID].qty;
+            totalcost += body[itemID].price * body[itemID].qty;
+
+            //Also we're gonna add each item to the orderItems tree while we're
+            //iterating, why not?!
+            fdb.update(fdb.ref(fireDB, "orders/orderItems/" + newOrderID), {
+                [itemID] : body[itemID].qty
+            })
+        }
+
+        //See sampleOrdersDB.json for structure inside db
+        fdb.set(fdb.ref(fireDB, "orders/ordermetadata/" + newOrderID), {
+            userid : "0",
+            cost : totalcost,
+            timestamp : timestamp,
+            orderStatus : "placed",
+            size : totalqty 
+        })
+
+        fdb.set(fdb.ref(fireDB, "orders/newestOrderId"), newOrderID);
+
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Order placed with ID: " + newOrderID;
+        return resMsg;
+
+
+
+    }else if(req.method === "GET"){
+
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }else {
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }
 };
 
 var requests = function(req, res, urlparts) {
@@ -50,17 +117,75 @@ var requests = function(req, res, urlparts) {
     return resMsg;
 }
 
+
 var sales = function(req, res, urlparts) {
-    let resMsg = {};
-    resMsg.code = 200;
-    resMsg.headers = {"Content-Type" : "text/plain"};
-    resMsg.body = "Displaying sales example when you go to localhost:8080/sales";
-    return resMsg;
+    //Create sales report table if not already exists with mySQL:
+    if(req.method === "GET"){
+        compactSqlQuery("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
+        "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
+        "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", false);
+        if(urlparts[urlparts.length-1].split("?").indexOf("nogen") == -1){
+            console.log("Requested sales reports with yes generation.");
+            //YES, DO GENERATE NEW SALES REPORT IN THIS CONDITION
+
+            //Get highest reportID value in the table and continue from there:
+            var newRepID;
+            
+            dbCon.query("SELECT MAX(ReportID) FROM REPORT", function (err, result) {
+                if (err || isNaN(result[0]['MAX(ReportID)']) || result[0]['MAX(ReportID)'] == undefined)
+                {
+                    console.log(err, "res: ", result[0]['MAX(ReportID)']);
+                    newRepID = 0;
+                }else {
+                    newRepID = result[0]['MAX(ReportID)'] + 1;
+                }
+                //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
+                compactSqlQuery("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", false);
+            });   
+        }
+
+        //Either way, request all the reports and send them to client
+        compactSqlQuery("SELECT * FROM REPORT", false, function (result) {
+            //TODO: Send info to HTML on client.
+        });
+
+
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+        
+
+    }else if(req.method === "POST"){
+        //This is just here as a matter of template-- there is no reason right now to make a POST request to sales.
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }else {
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "text/plain"};
+        resMsg.body = "Temporary filler text";
+        return resMsg;
+    }
 }
 
+var createAccount = function(req, res, urlparts) {
+    compactSqlQuery
+    (
+        "INSERT INTO `Account Database`\
+        (`UserID`, `UserName`, `Email`, `Password`) \
+        VALUES \
+        (1, 'D4', 'deaningramiv@gmail.com', '1234');",
+        false
+    );    
+
+}
 //This requestHandler is currently built to respond to expected HTTP requests. Some unexpected http requests (i.e. requests
 //for which no function is defined above) may also have responses in the form of HTML pages (like "/about").
-//TODO: Implement database interactions, which also requires implementation of request method-checking.
 const requestHandlerHTML = function(req, res){
     //Split up the received uri
     let urlparts = [];
@@ -75,70 +200,60 @@ const requestHandlerHTML = function(req, res){
     //Since each function takes urlparts, just in case the server determines the wrong one should be called, we'll try-catch each:
     let done = false;
     let resMsg = {};
-    try{
-        if(done === false && /\/accounts/.test(req.url)){
-            resMsg = accounts(req, res, urlparts);
-            done = true;
-        }
-    }catch(exc){};
 
     try{
+        if(done === false && /\/dbStatus/.test(req.url)){
+            resMsg = dbstatus(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/accounts/.test(req.url)){
+            //resMsg = accounts(req, res, urlparts);
+            //done = true;
+        }
+
         if(done === false && /\/inventory/.test(req.url)){
             resMsg = inventory(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};   
-
-    try{
+    
         if(done === false && /\/search/.test(req.url)){
             resMsg = search(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};   
-
-    try{
+    
         if(done === false && /\/review/.test(req.url)){
             resMsg = review(req, res, urlparts);
             done = true;
         }
-    }catch(exc){}; 
-
-    try{
+    
         if(done === false && /\/productName/.test(req.url)){
             resMsg = productName(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-    try{
+    
         if(done === false && /\/category/.test(req.url)){
             resMsg = category(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-    try{
-        if(done === false && /\/orders/.test(req.url)){
+    
+        if(done === false && /\/makeorder/.test(req.url)){
             resMsg = orders(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-
-    try{
+    
         if(done === false && /\/requests/.test(req.url)){
             resMsg = requests(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
-
-
-    try{
+    
         if(done === false && /\/sales/.test(req.url)){
             resMsg = sales(req, res, urlparts);
             done = true;
         }
-    }catch(exc){};
+    }catch(exc){
+        console.log("Uh oh! Something's wrong in the request routing for ", req.url, " ", req.method, " | Error: ", exc);
+    };
 
     if(done){
         res.writeHead(resMsg.code, resMsg.headers),
@@ -152,31 +267,172 @@ const requestHandlerHTML = function(req, res){
         var dataRequest = false; //For when something other than an html page is requested.
                                  //This may need to be determined from another list like the pages array
 
-        dataRequest = (req.url == "/geturl"); //This is just temporary
+        res.writeHead(200, {'Content-Type': 'text/html'});
 
-        if(dataRequest){
-            //Since /geturl is the only data request url that's coded for right now, we'll assume that's what the request is.
-            res.writeHead(200, {'Content-Type': 'text/plain'});
-            res.end();
-
-        }else { //If it's not requesting data, it must be requesting an HTML page, like the whole file.
-
-            res.writeHead(200, {'Content-Type': 'text/html'});
-
-            res.write(req.url);
-            if(req.url == "/")
-                fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
-            else {
-                //We use .then() and .catch() b/c fs.promises is async.
-                fs.access(__dirname + "/pages" + req.url, fsc.F_OK)
-                .then(() => fs.readFile(__dirname + "/pages" + req.url).then(contents => res.end(contents)))
-                .catch(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
-            }
+        res.write(req.url);
+        if(req.url == "/")
+            fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
+        else {
+            //We use .then() and .catch() b/c fs.promises is async.
+            fs.access(__dirname + "/pages" + req.url + ".html", fsc.F_OK)
+            .then(() => fs.readFile(__dirname + "/pages" + req.url + ".html").then(contents => res.end(contents)))
+            .catch(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
         }
+        
     }
-    
+
+    /*
+    //A search bar that takes a keyword input and searches between products to find a match.
+    //Outputs an error message for 0 results
+    const searchBar = document.getElementById("search-bar");
+    const form = document.querySelector("form");
+    const searchResults = document.getElementById("search-results");
+
+    form.addEventListener("submit", (event) => {
+        event.preventDefault(); // prevent form submission
+
+        const searchTerm = newFunction_1(searchBar);
+
+        if (searchTerm.trim()) {
+            const searchQuery = newFunction(searchTerm);
+            newFunction_3(searchQuery)
+                .then((response) => response.json())
+                .then((data) => {
+                    // display the search results
+                    if (data.length > 0) {
+                        searchResults.innerHTML = "";
+                        data.forEach((result) => {
+                            const item = document.createElement("div");
+                            item.textContent = result;
+                            searchResults.appendChild(item);
+                        });
+                    } else {
+                        searchResults.innerHTML = "No results found.";
+                    }
+                })
+                .catch((error) => console.error(error));
+        }
+    });
+*/
 }
 
-// Set up the http server
+//setting up mySQL database, still needs work
+//from lec8 REST server example slides
+const passwd = require("./password.json")
+const dbCon = mysql.createConnection(
+    {
+        host:"localhost",
+        user: "root",
+        password: passwd.password //change this to the password for your mysql root account
+    }
+)
+
+var sqlStmt = "CREATE DATABASE BestestBuy";
+dbCon.connect(function(err)
+{
+    if(err) throw err;
+    console.log("Connected to MySQL database");
+
+    try {
+        dbCon.query(sqlStmt, function (err, result) {
+            if (err)
+            {
+                console.log(err);
+                return;
+            } 
+            console.log("Result: ", result);
+        });
+    } catch (error) {
+        var sqlStmt = "USE BestestBuy";
+        dbCon.query(sqlStmt, function (err, result) {
+            if (err)
+            {
+                console.log(err);
+                return;
+            } 
+            console.log("Result: ", result);
+        });
+    }
+
+    mysqlLoaded = true;
+});
+
+//Set up firebase for noSQL db usage
+//TODO: IF YOU HAVE NOT YET DOWNLOADED THE API KEY FILE FROM DISCORD, DO SO AND DROP IT INTO THE SAME FOLDER AS SERVER.JS. DO NOT DISTRIBUTE THAT FILE.
+// Your web app's Firebase configuration
+var fireApp, fireDB;
+fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
+    const firebaseConfig = JSON.parse(contents);
+
+    // Initialize Firebase
+    try{
+        fireApp = fbApp.initializeApp(firebaseConfig);
+        fireDB = fdb.getDatabase(fireApp);
+        fireBaseLoaded = true;
+
+        //Google reccomends listening for changes to values instead of
+        //getting them every time you need them.
+        currentOrderID = 0;
+        const starCountRef = fdb.ref(fireDB, 'orders/newestOrderId');
+        fdb.onValue(starCountRef, (snapshot) => {currentOrderID = snapshot.val()});
+
+    }catch(error){
+        console.log("Error loading firebase: vvvv");
+        console.log(error);
+    }
+}).catch(() => console.log("Firebase JSON load error"));
+
+const app = express();
+
+// USE THESE BOOLS TO DETERMINE IF THE DATABASES ARE LOADED AND AVAILABLE. TRUE MEANS YES. FALSE MEANS NO, EITHER WAIT OR SOMETHING'S WRONG.
+var fireBaseLoaded = false;
+var mysqlLoaded = false;
+
+//I made this so that the js document isn't so ugly with a bunch of handler functions that are largely made up of error handling/console logging. Hopefully this works well -Joey
+//This will not be useable in some cases where errors may be expected and checked for, so you will have to use a regular dbCon.query() for those scenarios instead.
+//Query is a string, normal SQL query. Log=true outputs result/err to console.log() false does opposite, and handler is handler function that takes 1 param: result 
+var compactSqlQuery = function(query, log=false, handler) {
+    dbCon.query(query, function(err, result){
+        if (err)
+        {
+            console.log("Error on query: ", query, " with message: ", err);
+            return; //I considered having this return false or true, but I figured since this can be a little asynch, it wouldn't be very useful in a (default) synchronous context.
+        } 
+        if(log)
+            console.log("Result: ", result);
+        if(handler != undefined)
+            handler(result);
+    });
+};
+
+
+// Set up the http server -- Moved to below db stuff so that we can be sure the database is loaded and connected before any requests are
+// made asynchronously through HTML.
 // TODO: Convert to https. This is seemingly not as simple as just changing 'http' to 'https' as we need an SSL certifciate to upgrade to HTTPS :/ 
-http.createServer(requestHandlerHTML).listen(8080);
+
+
+//http.createServer(requestHandlerHTML).listen(8080);
+app.use(express.json(), requestHandlerHTML);
+app.listen(8080);
+
+
+function newFunction(searchTerm) {
+    return newFunction_2(searchTerm);
+}
+
+function newFunction_3(searchQuery) {
+    return fetch(searchQuery);
+}
+
+function newFunction_2(searchTerm) {
+    return newFunction(searchTerm);
+}
+
+function newFunction_1(searchBar) {
+    return searchBar.value;
+}
+
+function newFunction(searchTerm) {
+    return `/search?q=${searchTerm}`;
+}
+//const regExpAccounts = new RegExp('^\/accounts\/.*','i');

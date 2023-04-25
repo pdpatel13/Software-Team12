@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Bestest Buy/accounts</title>
+    </head>
+    
+    <body>
+        <h1>Accounts</h1>
+        <button onclick="buttonFunc1()">Sign In</button>
+        <button onclick="buttonFunc2()">Create Account</button>
+
+        <form method=" post"
+        action="">
+        <fieldset hidden id="Signin">
+            <legend>Sign in</legend>
+            <p>
+                <label>Username: <input type="text"
+                id="signinUsername" 
+                onblur="validUser()"
+                placeholder = "Enter your username" 
+                title="Enter a valid username">
+
+                </label>
+            </p>
+            <p>
+                <label>Password: <input type="password"
+                id="signinPassword" onblur="validPassword()"
+                placeholder = "Enter your password"
+                title="Enter the password corresponding to your username">
+                </label>
+            </p>
+            <input type="submit" value="Sign In" onclick="signin()">
+        </fieldset>
+        </form>
+
+        <form method= "post"
+        action="">
+        <fieldset hidden id="CreateAcct">
+            <legend>Create New Account</legend>
+            <p>
+                <label for="emailAddr">Your Email:</label>
+                <input type="text"
+                id = "CAemailAddr"
+                name="emailAddr"
+                placeholder = "Email"
+                title = "A verification will be sent to your email account"
+                minlength="8" 
+                size="25">
+            </p>
+
+            <p>
+                <label for="username">Username:</label>
+                <input type="text"
+                name="username" onblur="checkUsername()"
+                id = "CAuserName"
+                placeholder = "Username"
+                title = "Enter your desired username"
+                minlength="8" 
+                size="25">
+            </p>
+
+            <p>
+                <label for="password">Password:</label> 
+                <input type="password"    
+                name="password" onblur="checkPassword()"
+                id = "CApassword"
+                placeholder = "Password"
+                title = "Must be at least 8 characters and at least 1 letter, number and symbol"
+                minlength="8" 
+                size="25" >
+            </p>
+
+            <p>
+                <label>Retype Password: </label> 
+                <input type="password"
+                name="password2" onblur="checkPasswordMatch()"
+                placeholder = "Retype password"
+                title = "Must match above password "
+                minlength="8" size="25">
+            </p>
+
+            <input type="submit" 
+            value="Create Account" 
+            onclick="createAccount()"
+            title="Click to create your new account">
+
+        </fieldset>
+        </form>
+
+        <script>
+            //src = "./JS_sources/accounts.js"
+            //src = "accounts.js"
+            
+var buttonFunc1 = function()
+{
+    document.getElementById("CreateAcct").hidden = true;
+    document.getElementById("Signin").hidden = false;
+}
+
+var buttonFunc2 = function()
+{
+    document.getElementById("Signin").hidden = true;
+    document.getElementById("CreateAcct").hidden = false;
+}
+
+function validUser()
+{
+    
+}
+
+function validPassword()
+{
+    
+}
+
+
+function checkUsername()
+{
+    // this function should check the database to see if the username already exists
+    //this function also checks whether the username meets requirements
+    if (username.trim() === '' || password.trim() === '') {
+    return false;
+  }
+
+  if (username.length < 6) {
+    return false;
+  }
+
+  if (password.length < 8) {
+    return false;
+  }
+
+  var hasUpperCase = /[A-Z]/.test(password);
+  var hasLowerCase = /[a-z]/.test(password);
+  var hasDigit = /\d/.test(password);
+  if (!hasUpperCase || !hasLowerCase || !hasDigit) {
+    return false;
+  }
+
+  return true;
+}
+
+function checkPassword()
+{
+    // this function checks that the password meets requirements
+    const password = document.getElementById("signinPassword").value;
+  const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+  const valid = regex.test(password);
+  
+  if (!valid) {
+    alert("Password must be at least 8 characters long and contain at least one letter, one number, and one symbol.");
+    document.getElementById("signinPassword").value = "";
+  }
+}
+
+function checkPasswordMatch()
+{
+    //this function checks to make sure the password and retyped password match
+    p1 = form.elements["password"];
+    p2 = form.elements["password2"];
+
+    //if (p1 != p2)
+        
+}
+
+function signin()
+{
+    //this function should check that the entered username exists in the database 
+    //this function should also check that the entered password matches the users password
+    user = document.getElementById("signinUsername").value;
+    pw = document.getElementById("signinPassword").value;
+
+
+    alert("Hello " + user + "\nWelcome to Bestest Buy!");
+}
+
+
+function createAccount(request, response, body)
+{
+    //this function should send the attributes from the create account form to server.js which stores it in db
+
+    let resMsg = {};
+
+            fetch( window.location.href + "/dbStatus", 
+            {
+                method: "POST", 
+                headers: 
+                    {
+                        'Accept': 'application/json',
+                        'Content-Type': "text/plain"
+                    },
+                body: JSON.stringify(
+                    {
+                        email: document.getElementById("CAemail").value,
+                        user: document.getElementById("CAusername").value,
+                        password: document.getElementById("CApassword").value
+                    }
+                )
+            })
+                .then((response) => response.json)
+                .then((json) => console.log(json));
+            }
+
+        </script>
+        <a href="/">Home</a>
+    </body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Review System2.0</title>
+    <meta charset="UTF-8">
+
+</head>
+<body>
+
+    <h1>Review</h1>
+
+    <form action="postreview.php" method="post">
+
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name">
+        
+
+        <label for="review">Your feedback</label>
+        
+        <textarea id="review" name="review"></textarea>
+      
+
+        <label for="rating">Rating</label>
+        <select id="rating" name="rating">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3"selected>3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+
+
+
+
+        <label>
+            <input type="checkbox" name="terms">
+            I agree to the terms and conditions
+        </label>
+
+        <br>
+        
+
+        <button>Send</button>
+
+    </form>
+
+</body>
+</html>
