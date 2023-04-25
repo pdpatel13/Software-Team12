@@ -15,8 +15,8 @@ db.connect(function(err)
 
 db.query("CREATE TABLE if not exists `Accounts` (\
   `userID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
-  `UserName` varchar(20) NOT NULL,\
-  `Email` varchar(40) NOT NULL,\
+  `UserName` varchar(20) UNIQUE NOT NULL,\
+  `Email` varchar(40) UNIQUE NOT NULL,\
   `Password` varchar(20) NOT NULL,\
   `FirstName` text,\
   `LastName` text,\
@@ -34,8 +34,8 @@ http.createServer(function(req,res)
   // Create a secret key for signing JWT tokens
   const secretKey = 'my-secret-key';
 
-  // POST request to create a new account
-  if (req.method === 'POST' && req.url === '/accounts/create') {
+   // POST request to create a new account
+   if (req.method === 'POST' && req.url === '/accounts/create') {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk;
@@ -55,15 +55,23 @@ http.createServer(function(req,res)
       var email = post.email;
       var password = post.password;
       
-     
       var query = "INSERT INTO `Accounts` (`UserName`, `Email`, `Password`) VALUES (?, ?, ?)";
       db.query(query, [username, email, password], function(err, result, fields) {
-        if (err) throw err;
+        if (err && err.code === 'ER_DUP_ENTRY') {
+          res.statusCode = 409;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ message: 'Username or email already exists' }));
+          return;
+        }
+        else if (err) {
+          throw err;
+        }
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ accountId: result.insertId }));
       });      
     });
   }
+
 
   // POST request for user authentication (login)
   if (req.method === 'POST' && req.url === '/accounts/login') {
