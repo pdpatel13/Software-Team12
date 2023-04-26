@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BB-Orders</title>
+        <h1>Welcome to Bestest Buy</h1>
+        <style>
+            table tr td {
+                border-right: 1px solid blue;
+                color: black;
+                text-align: center;
+              }
+              
+              table tr td:last-of-type {
+                border: none;
+                text-align: center;
+              }
+              
+              .inline_p {
+                display: inline-block;
+              }
+        </style>
+    </head>
+    
+    <body onload="refOrders()">
+        <!-- This is just for navigation of the sample pages. -->
+        <p>This is the Employee Order Status Management page.</p>
+        <p id="greeting"></p>
+        <a href="/">Home</a>
+        <a href="/accountPage">Accounts</a>
+        <a href="/reports">Reports</a>
+        <a href="/products">Browse Products</a>
+        <a href="/admin">Admin</a>
+        <a href="/staff">Employee</a>
+        
+        <!-- This button calls buttonFunc in the script region below, and the <p> block has id demo so the js script
+            can locate it -->
+        <button onclick="refOrders()">Refresh Orders</button>
+        <table id="table1">
+            <p>List of Orders:</p>
+            <thead>
+              <tr>
+                <th>OrderID</th>
+                <th>UserID</th>
+                <th>Time </th>
+                <th>Size</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="display_body2">
+              <tr hidden id="tr_template">
+                <td class="product_name"></td>
+                <td class="product_desc"></td>
+                <td class="product_price"></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <table id="table2">
+            <p class = "inline_p">Order # &nbsp</p> <p class="inline_p" id="ordernumber"></p> <p class="inline_p">&nbsp</p>
+            <button onclick="approve()">Ship Order</button>
+            <thead>
+              <tr>
+                <th>Item ID</th>
+                <th>Item Name</th>
+                <th>Item Unit Price </th>
+                <th>Item Qty</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="display_body1">
+              <tr hidden id="tr_template">
+                <td class="product_name"></td>
+                <td class="product_desc"></td>
+                <td class="product_price"></td>
+              </tr>
+            </tbody>
+          </table>
+
+          </pre>
+        <!-- window.location.href gets current URL in browser, this is template for updating element in page
+            with a response from the server, as opposed to the server completely overwriting the currently loaded
+            page/response -->
+        <script>
+            let reqRefreshHTTP = {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            };
+
+            var approve = function(){
+                let orderID = Number(document.getElementById("ordernumber").innerHTML);
+
+                let urlparts = [];
+                let segments = window.location.href.split("/");
+                for(i = 0, ct=segments.length; i<ct; i++){
+                    if(segments[i] != ""){
+                        urlparts.push(segments[i]);
+                    }
+                }
+
+                let baseURL = urlparts[0] + "//" + urlparts[1];
+
+                let reqHere = {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }, 
+                    body: JSON.stringify({id: orderID, status: "Sent"})
+                };
+
+                fetch(baseURL+"/modifyOrder/", reqHere).then(() => {
+                    refOrders();
+                });
+            }
+
+            var viewOrder = function(reportID){
+                document.getElementById("table1").hidden = true;
+                document.getElementById("table2").hidden = false;
+                document.getElementById("ordernumber").innerHTML = reportID;
+
+                let req = {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({id: reportID})
+                };
+
+                let urlparts = [];
+                let segments = window.location.href.split("/");
+                for(i = 0, ct=segments.length; i<ct; i++){
+                    if(segments[i] != ""){
+                        urlparts.push(segments[i]);
+                    }
+                }
+
+                let baseURL = urlparts[0] + "//" + urlparts[1];
+
+                let itemReq = {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: {}
+                };
+
+                fetch(baseURL+"/viewOrder/", req).then(result => {
+                    result.json().then(data => {
+                        document.getElementById("display_body1").innerHTML = "";
+                        Object.keys(data).forEach(key=>{
+                            itemReq.body = JSON.stringify({column: "productID", value: key});
+                            fetch(baseURL+"/findItemsByTrait", itemReq).then(result2 => {
+                                result2.json().then(item => {
+                                    item = item[0];
+                                    document.getElementById("display_body1").insertAdjacentHTML("beforeend",
+                                    "<td> " + key + "</td>\
+                                        <td> " + item.productName + "</td>\
+                                        <td> " + item.unitPrice + "</td>\
+                                        <td> " + data[key] + "</td>"
+                                    );
+                                });
+                            });
+                        });
+                    });
+                });
+            }
+
+            var refOrders = function(){
+                document.getElementById("table1").hidden = false;
+                document.getElementById("table2").hidden = true;
+                document.getElementById("display_body2").innerHTML = "";
+
+                let urlparts = [];
+                let segments = window.location.href.split("/");
+                for(i = 0, ct=segments.length; i<ct; i++){
+                    if(segments[i] != ""){
+                        urlparts.push(segments[i]);
+                    }
+                }
+
+                let baseURL = urlparts[0] + "//" + urlparts[1];
+
+                fetch( baseURL+ "/getOrders", reqRefreshHTTP).then(
+                    response => {
+                        response.json().then(data => {
+                            new_obj= {};
+                            rev_obj = Object.keys(data).reverse();
+                            rev_obj.forEach(function(i) { 
+                                new_obj[i] = data[i];
+                            })
+                            data = new_obj;
+                            var oldKey = 0;
+                            Object.keys(data).forEach(key=>{
+                                let position = "";
+                                if(Number(key) > oldKey){
+                                    oldKey = key;
+                                    position = "afterbegin";
+                                }else {
+                                    oldKey = key;
+                                    position = "beforeend";
+                                }
+                                document.getElementById("display_body2").insertAdjacentHTML(position, 
+                                "<td> " + key + "</td>\
+                                <td> " + data[key].userid + "</td>\
+                                <td> " + data[key].timestamp + "</td>\
+                                <td> " + data[key].size + "</td>\
+                                <td> " + data[key].orderStatus + "</td>\
+                                <td> <button class=\"viewOrderButton" + key + "\">View Order</button></td>");
+
+                             document.getElementsByClassName("viewOrderButton" + key)[0].onclick = viewOrder.bind(null, key);
+                            });
+                        })
+                    }
+                );
+            };
+        </script> <!-- Note that both fetch() and text() return promises, so they have to  be "then"-ed and caught. -->
+    </body>
+</html>

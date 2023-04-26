@@ -15,6 +15,7 @@ const fdb = require("firebase/database");  //npm install firebase
 const cookieParser = require('cookie-parser')
 
 //Demo here
+const sApiKey = "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";
 
 //The following functions: accounts, inventory, review, search, productName, category, orders, requests, and sales
 //are all of the topmost domains (i.e. website.com/accounts, or website.com/inventory). These will be called when
@@ -121,6 +122,36 @@ var deleteItem = function(req, res, urlparts) {
     });
   };
   
+var sendEmail = function(contents) {
+    let reqEmail = {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + sApiKey,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            personalizations: [{
+                to: [{
+                    email: "jma396@scarletmail.rutgers.edu",
+                    name: "Bestest Buy Admin"
+                }],
+                subject: "Order Placed!"}],
+            content: [{
+                type: "text/plain",
+                value: contents
+            }],
+            from: {
+                email: "watermelonsplash92@gmail.com",
+                name: "Bestest Buy Noreply"
+            },
+            reply_to: {
+                email: "watermelonsplash92@gmail.com",
+                name: "Bestest Buy Noreply"
+            }
+        })
+    }
+    fetch("https://api.sendgrid.com/v3/mail/send", reqEmail);
+};
 
 var review = function(req, res, urlparts) {
     let resMsg = {};
@@ -180,6 +211,9 @@ var orders = function(req, res, urlparts) {
     resMsg.code = 200;
     resMsg.headers = {"Content-Type" : "text/plain"};
     resMsg.body = "Order placed with ID: " + newOrderID;
+
+    sendEmail("Order ID: "+ newOrderID);
+
     return resMsg;
 };
 
@@ -501,6 +535,81 @@ var viewInventory = function(req, res, urlparts) {
     });
 }
 
+const viewOrder = function(req, res, urlparts) {
+    let resMsg = {};
+    resMsg.headers = {"Content-Type" : "application/json"};
+
+    fdb.get(fdb.child(fdb.ref(fireDB), 'orders/orderItems/' + req.body.id)).then(snapshot =>{
+        if(snapshot.exists()){
+            resMsg.code = 200;
+            resMsg.body = JSON.stringify(snapshot);
+        }else {
+            resMsg.code = 400;
+            resMsg.body = JSON.stringify("Could not find order with given ID");
+        }
+        res.writeHead(resMsg.code, resMsg.headers);
+        res.end(resMsg.body);
+    })
+}
+
+const modifyOrder = function(req, res, urlparts) {
+    console.log(req.body);
+    fdb.update(fdb.ref(fireDB, "orders/ordermetadata/" + req.body.id), {orderStatus: req.body.status}).then(out => {
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "application/json"};
+        console.log(out);
+        resMsg.body = JSON.stringify(out);
+        res.writeHead(resMsg.code, resMsg.headers);
+        res.end(resMsg.body);
+    });
+}
+
+const findItemsByTrait = function(req, res, urlparts){
+    var query = "SELECT * FROM `Inventory` WHERE `"+ req.body.column +"` = " + req.body.value;
+    dbCon.query(query, function(err, result, fields) {
+        if(err) {
+            console.log(err);
+            res.statusCode = 400;
+            res.end();
+            return;
+        }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(result));
+    });
+}
+
+const getOrders =function(req, res, urlparts) {
+    let resMsg = {};
+    fdb.get(fdb.child(fdb.ref(fireDB), 'orders/newestOrderId')).then(snapshot => {
+        if(snapshot.exists()){
+            let latestOrderID = snapshot.val();
+            var orderMetadatas = {};
+            let done = 1;
+            for(let counter = Number(latestOrderID); counter > 0; counter--){
+                fdb.get(fdb.child(fdb.ref(fireDB), 'orders/ordermetadata/'+counter)).then(snapshot => {
+                    done++;
+                    if(snapshot.exists()){
+                        orderMetadatas[""+counter]= snapshot.val();
+                        if(done == latestOrderID){
+                            resMsg.code = 200;
+                            resMsg.headers = {"Content-Type" : "application/json"};
+                            resMsg.body = JSON.stringify(orderMetadatas);
+
+                            res.writeHead(resMsg.code, resMsg.headers);
+                            res.end(resMsg.body);
+                        }
+                    }else {
+                    }
+                });
+            }
+        }
+        else
+            console.log("snapshot does not exist");
+    });
+}
+
 //List of protected routes with their methods
 const protectedRoute = function(req){
     //
@@ -523,7 +632,11 @@ const protectedRoute = function(req){
         return 1;
     if (req.method === 'GET' && req.url.startsWith('/makeOrder'))
         return 1;
+    if (req.method === 'GET' && req.url.startsWith('/getOrders'))
+        return 2;
     if (req.method === 'POST' && req.url.startsWith('/modifyOrder'))
+        return 2;
+    if (req.method === 'POST' && req.url.startsWith('/viewOrder'))
         return 2;
     if (req.method === 'GET' && req.url.startsWith('/admin'))
         return 3;
@@ -548,6 +661,7 @@ const authenticateToken = function(req, res, next){
     let role = req.cookies.userRank;
     if(token == null) return res.sendStatus(401);
     if(clearance == 3 && role != "admin") return res.sendStatus(401);
+    if(clearance == 2 && role != "admin" && role != "staff") return res.sendStatus(401);
     jwt.verify(token, secretKey, (err, user) => {
         if(err) console.log(err);
         if(err) return res.sendStatus(403);
@@ -578,7 +692,7 @@ const setupSqlDatabase = function() {
     dbCon.query("CREATE TABLE if not exists `Inventory` (\
     `productID` INT(8) NOT NULL UNIQUE AUTO_INCREMENT,\
     `productName` varchar(30) UNIQUE NOT NULL,\
-    `desc` varchar(100) UNIQUE NOT NULL,\
+    `desc` varchar(100) NOT NULL,\
     `unitPrice` DECIMAL(15,2) NOT NULL,\
     `onHand` INT(4),\
     `category` VARCHAR(20),\
@@ -609,6 +723,11 @@ const router = function(req, res){
     let done = false;
 
     if(req.method == "GET"){
+        if(done === false && /\/getOrders/.test(req.url)){
+            resMsg = getOrders(req, res, urlparts);
+            done = true;
+        }
+
         if(done === false && /\/dbStatus/.test(req.url)){
             resMsg = dbstatus(req, res, urlparts);
             done = true;
@@ -659,6 +778,22 @@ const router = function(req, res){
             done = true;
         }
     }else if(req.method == "POST"){
+        
+        if(done === false && /\/findItemsByTrait/.test(req.url)){
+            findItemsByTrait(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/modifyOrder/.test(req.url)){
+            resMsg = modifyOrder(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/viewOrder/.test(req.url)){
+            resMsg = viewOrder(req, res, urlparts);
+            done = true;
+        }
+
         if(done === false && /\/viewReport/.test(req.url)){
             console.log("viewreport");
             viewReport(req, res, urlparts);
