@@ -8,13 +8,10 @@ table, th, td {
 </head>
 <body onload="newPage()">
   <a href="/">Home</a>
-  <a href="/about">About</a>
-  <a href="/404">404 Demo</a>
   <a href="/accountPage">Accounts</a>
   <a href="/reports">Reports</a>
-  <a href="/products">Products</a>
+  <a href="/products">Browse Products</a>
   <a href="/admin">Admin</a>
-  <a href="/userorder">Make a (Manual) Order!</a>
 
   <label for="Page">Page: </label>
   <input type="text" id="pageInput" name="page">
@@ -23,6 +20,7 @@ table, th, td {
 <table>
   <thead>
     <tr>
+      <th></th>
       <th>Name</th>
       <th>Description</th>
       <th>Price</th>
@@ -39,7 +37,102 @@ table, th, td {
   </tbody>
 </table>
 
+<table>
+  <p>Your Cart:</p>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Price</th>
+      <th>Quantity</th>
+    </tr>
+  </thead>
+  <tbody id="display_body2">
+    <tr hidden id="tr_template">
+      <td class="product_name"></td>
+      <td class="product_desc"></td>
+      <td class="product_price"></td>
+      <td class="product_category"></td>
+    </tr>
+  </tbody>
+</table>
+
+<br>
+<button onclick="placeOrder()">Place Order!</button>
+<p id="ordStatus"></p>
+
 <script>
+  var orderObject = {};
+
+  const userID = document.cookie
+  .split("; ")
+  .find((row) => row.startsWith("userID="))
+  ?.split("=")[1];
+
+
+  var addToCart = function(itemToAdd) {
+    console.log("itemtoadd ", itemToAdd);
+    if(orderObject[itemToAdd.productID] == undefined){
+      orderObject[itemToAdd.productID] = {};
+      orderObject[itemToAdd.productID].qty = 0;
+      orderObject[itemToAdd.productID].price = itemToAdd.unitPrice;
+    }
+    orderObject[itemToAdd.productID].qty = orderObject[itemToAdd.productID].qty + 1;
+    if(document.getElementById("display_body2").getElementsByClassName("qty"+itemToAdd.productID).length == 0)
+      document.getElementById("display_body2").insertAdjacentHTML("beforeend", 
+                 "<td> " + itemToAdd.productName + "</td>\
+                  <td> " + itemToAdd.desc + "</td>\
+                  <td> " + itemToAdd.unitPrice + "</td>\
+                  <td class=\"qty" + itemToAdd.productID + "\"> " + orderObject[itemToAdd.productID].qty + "</td>");
+    else{
+      console.log()
+      document.getElementById("display_body2").getElementsByClassName("qty" + itemToAdd.productID)[0].innerHTML = orderObject[itemToAdd.productID].qty;
+    }
+  }
+
+  var placeOrder = function() {
+    if(JSON.stringify(orderObject) == JSON.stringify({}) || orderObject == null || orderObject == undefined){
+      document.getElementById("ordStatus").textContent = "Empty order. Order not placed";
+      return;
+    }
+
+    orderObject.userID = userID;
+    console.log("ab to place", orderObject);
+
+    let urlparts = [];
+    let segments = window.location.href.split("/");
+    for(i = 0, ct=segments.length; i<ct; i++){
+        if(segments[i] != ""){
+            urlparts.push(segments[i]);
+        }
+    }
+
+    let baseURL = urlparts[0] + "//" + urlparts[1];
+
+
+    var reqHTTP = {
+      method: "POST",
+      headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+      },
+      body: JSON.stringify(orderObject)   //This is whatever body is sent with the POST (if JSON be sure to stringify it. You do NOT need to JSON Parse() on the Serverside, it
+                                          //gets parsed by express.js automatically, so serverside in the handler when you do req.body it is already a javascript object)
+    };  
+
+    fetch(baseURL + "/makeorder", reqHTTP).then(
+        response => {
+            response.text().then(text => {
+                //This is the response from the server
+                document.getElementById("ordStatus").textContent = text;
+            });
+        }
+    ).catch(error => console.log(error));
+
+    orderObject = {};
+    document.getElementById("display_body2").innerHTML = "";
+  }
+
   var newPage = function(){
     let pageNum = document.getElementById("pageInput").value;
     if(isNaN(pageNum) || pageNum == "")
@@ -65,12 +158,17 @@ table, th, td {
         if(r.status == 200){
           r.json().then(data => {
             console.log(data);
+            document.getElementById("display_body1").innerHTML = "";
               for(let i = 0; i < data.length; i++){
                 document.getElementById("display_body1").insertAdjacentHTML("beforeend", 
-                "<td> " + data[i].productName + "</td>\
+                "<td> <button class=\"cartButton" + i + "\">Add to Cart</button></td>\
+                 <td> " + data[i].productName + "</td>\
                  <td> " + data[i].desc + "</td>\
                  <td> " + data[i].unitPrice + "</td>\
-                 <td> " + data[i].category + "</td");
+                 <td> " + data[i].category + "</td>");
+                  
+                  console.log("datai ", data[i]);
+                document.getElementsByClassName("cartButton" + i)[0].onclick = addToCart.bind(null, data[i]);
               }
             });
         }

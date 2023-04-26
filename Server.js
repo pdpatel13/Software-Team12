@@ -89,6 +89,7 @@ var currentOrderID;
 var orders = function(req, res, urlparts) {
     //Push data from json data inside request to firedb.
     let body = req.body;
+    console.log("order", req.body);
     let newOrderID = currentOrderID + 1;
 
     //calculate relevant metrics: total cost, timestamp, total qty
@@ -109,7 +110,7 @@ var orders = function(req, res, urlparts) {
 
     //See sampleOrdersDB.json for structure inside db
     fdb.set(fdb.ref(fireDB, "orders/ordermetadata/" + newOrderID), {
-        userid : "0",
+        userid : body["userID"],
         cost : totalcost,
         timestamp : timestamp,
         orderStatus : "placed",
@@ -389,6 +390,8 @@ const protectedRoute = function(req){
     if (req.method === 'PATCH' && req.url.startsWith('/accounts'))
         return 1;
     if (req.method === 'DELETE' && req.url.startsWith('/accounts'))
+        return 1;
+    if (req.method === 'POST' && req.url.startsWith('/cart'))
         return 1;
     if (req.method === 'GET' && req.url.startsWith('/userOrder'))
         return 1;
