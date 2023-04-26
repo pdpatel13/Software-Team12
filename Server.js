@@ -133,7 +133,7 @@ var requests = function(req, res, urlparts) {
 
 var viewReport = function(req,res,urlparts) {
     let resMsg = {};
-    dbCon.query("SELECT * FROM REPORT WHERE ReportId = " + req.body, function(err, result){
+    dbCon.query("SELECT * FROM REPORT WHERE ReportId = " + req.body.id, function(err, result){
         if(err){
             resMsg.code = 400;
             resMsg.headers = {"Content-Type" : "application/json"};
@@ -141,7 +141,7 @@ var viewReport = function(req,res,urlparts) {
         }else {
             resMsg.code = 200;
             resMsg.headers = {"Content-Type" : "application/json"};
-            resMsg.body = JSON.stringify(result);
+            resMsg.body = JSON.stringify(result[0]);
         }
 
         res.writeHead(resMsg.code, resMsg.headers);
@@ -466,11 +466,15 @@ const protectedRoute = function(req){
         return 1;
     if (req.method === 'GET' && req.url.startsWith('/makeOrder'))
         return 1;
+    if (req.method === 'POST' && req.url.startsWith('/modifyOrder'))
+        return 2;
     if (req.method === 'GET' && req.url.startsWith('/admin'))
         return 3;
     if (req.method === 'POST' && req.url.startsWith('/inventory'))
         return 3;
     if (req.method === 'GET' && req.url.startsWith('/reports'))
+        return 3;
+    if (req.method === 'POST' && req.url.startsWith('/viewReport'))
         return 3;
 
     return 0;
@@ -598,7 +602,8 @@ const router = function(req, res){
             done = true;
         }
     }else if(req.method == "POST"){
-        if(done === false && /\/;/.test(req.url)){
+        if(done === false && /\/viewReport/.test(req.url)){
+            console.log("viewreport");
             viewReport(req, res, urlparts);
             done = true;
         }

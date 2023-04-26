@@ -3,6 +3,18 @@
     <head>
         <title>BB-Reports</title>
         <h1>Welcome to Bestest Buy</h1>
+        <style>
+            table tr td {
+                border-right: 1px solid blue;
+                color: black;
+                text-align: center;
+              }
+              
+              table tr td:last-of-type {
+                border: none;
+                text-align: center;
+              }
+        </style>
     </head>
     
     <body>
@@ -40,11 +52,11 @@
             <p>Report Query:</p>
             <thead>
               <tr>
-                <th>ReportID</th>
-                <th>ReportTime</th>
-                <th>Orders Placed</th>
-                <th>Income</th>
-                <th>Qty Sold</th>
+                <th>  ReportID  </th>
+                <th>  ReportTime  </th>
+                <th>  Orders Placed  </th>
+                <th>  Income  </th>
+                <th>  Qty Sold  </th>
               </tr>
             </thead>
             <tbody id="display_body1">
@@ -68,9 +80,8 @@
                         "Content-Type": "text/json"
                     }
                 };
-                fetch( window.location.href + "/sales", reqGenHTTP);
-
-                refReports();
+                fetch( window.location.href + "/sales", reqGenHTTP).then(() => 
+                refReports());
             };
 
             let reqRefreshHTTP = {
@@ -90,7 +101,7 @@
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: reportID
+                    body: JSON.stringify({id: reportID})
                 };
 
                 let urlparts = [];
@@ -103,14 +114,15 @@
 
                 let baseURL = urlparts[0] + "//" + urlparts[1];
 
-                fetch(baseURL+"/viewReport/"+reportID, req).then(result => {
+                fetch(baseURL+"/viewReport/", req).then(result => {
                     result.json().then(data => {
-                        document.getElementById("display_body2").insertAdjacentHTML("beforeend", 
-                            "<td> " + data[key].ReportID + "</td>\
-                             <td> " + data[key].ReportTime + "</td>\
-                             <td> " + data[key].OrdersSinceLastReport + "</td>\
-                             <td> " + data[key].IncomeSinceLastReport + "</td>\
-                             <td> " + data[key].CurrentInventorySize + "</td>");
+                        console.log(data);
+                        document.getElementById("display_body1").insertAdjacentHTML("beforeend", 
+                            "<td> " + data.ReportID + "</td>\
+                             <td> " + data.ReportTime + "</td>\
+                             <td> " + data.OrdersSinceLastReport + "</td>\
+                             <td> " + data.IncomeSinceLastReport + "</td>\
+                             <td> " + data.CurrentInventorySize + "</td>");
                     });
                 });
             }
@@ -118,17 +130,18 @@
             var refReports = function(){
                 document.getElementById("display_body2").hidden = false;
                 document.getElementById("display_body1").hidden = true;
+                document.getElementById("display_body2").innerHTML = "";
                 fetch( window.location.href + "/sales?nogen", reqRefreshHTTP).then(
                     response => {
                         response.json().then(data => {
-                            Object.keys(data).forEach(key=>{
+                            for(let key = 0; key < data.length; key++){
                                 document.getElementById("display_body2").insertAdjacentHTML("beforeend", 
                             "<td> " + data[key].ReportID + "</td>\
                              <td> " + data[key].ReportTime + "</td>\
-                             <td> <button class=\"viewReportButton" + data[key].reportID + "\">View Report</button></td>");
-                             
-                             document.getElementsByClassName("viewReportButton" + data[key].reportID)[0].onclick = viewReport.bind(null, data[key].reportID);
-                            })
+                             <td> <button class=\"viewReportButton" + data[key].ReportID + "\">View Report</button></td>");
+
+                             document.getElementsByClassName("viewReportButton" + data[key].ReportID)[0].onclick = viewReport.bind(null, data[key].ReportID);
+                            }
                         })
                     }
                 );
