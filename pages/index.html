@@ -9,13 +9,18 @@
     <body>
         <!-- This is just for navigation of the sample pages. -->
         <p>This is the home page.</p>
+        <a href="/">Home</a>
         <a href="/about">About</a>
         <a href="/404">404 Demo</a>
-        <a href="/accounts">Accounts</a>
+        <a href="/accountPage">Accounts</a>
         <a href="/reports">Reports</a>
         <a href="/products">Products</a>
         <a href="/admin">Admin</a>
         <a href="/userorder">Make a (Manual) Order!</a>
+
+        <br>
+        <br>
+        <p id="ManageUser"></p>
         
         <!-- This button calls buttonFunc in the script region below, and the <p> block has id demo so the js script
             can locate it -->
@@ -26,6 +31,23 @@
             with a response from the server, as opposed to the server completely overwriting the currently loaded
             page/response -->
         <script>
+            let cookieValue = null;
+            try {
+                cookieValue = document.cookie
+                .split("; ")
+                .find((row) => row.startsWith("username="))
+                ?.split("=")[1];
+                
+                console.log(cookieValue);
+            }catch(err){
+
+            }
+            if(cookieValue === NaN || cookieValue === null || cookieValue === "NaN"){
+                document.getElementById('ManageUser').innerHTML = "Not signed in yet :(";
+            }else {
+                document.getElementById('ManageUser').innerHTML = "Welcome back " + cookieValue + "!";
+            }
+
             var buttonFunc = function(){
                 
                 let testHTTP = {

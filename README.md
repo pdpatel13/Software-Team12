@@ -8,6 +8,9 @@ Report 2: [Google Docs](https://docs.google.com/document/d/1nOkCGrnlludJP9I8p_Bf
 2. In terminal:
     'npm i mysql2'
     'npm i firebase'
+    'npm i jsonwebtoken'
+    'npm i express'
+    'npm i cookie-parser'
 2. Download or clone this repo
 3. Ensure you have a "firebaseAPI-DONOTUPLOAD.json" in the same folder as Server.js. It is the firebase config as a JSON, including API key. If you need a copy, check discord (for Team12 members specifically)
 3. In the folder containing Server.js, open your terminal and enter `node Server.js`.

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Bestest Buy/accounts</title>
+    </head>
+    
+    <body>
+        <h1>Accounts</h1>
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/404">404 Demo</a>
+        <a href="/accountPage">Accounts</a>
+        <a href="/reports">Reports</a>
+        <a href="/products">Products</a>
+        <a href="/admin">Admin</a>
+        <a href="/userorder">Make a (Manual) Order!</a>
+
+        <button onclick="buttonFunc1()">Sign In</button>
+        <button onclick="buttonFunc2()">Create Account</button>
+
+        <div hidden id="Signin">
+            <legend>Sign in</legend>
+            <p>
+                <label>Email: <input type="text"
+                id="signinEmail" 
+                onblur="validEmail()"
+                placeholder = "Enter your email address" 
+                title="Enter a valid email address">
+
+                </label>
+            </p>
+            <p>
+                <label>Password: <input type="password"
+                id="signinPassword"
+                placeholder = "Enter your password"
+                title="Enter the password corresponding to your username">
+                </label>
+            </p>
+            <input type="submit" value="Sign In" onclick="signin()">
+        </div>
+
+        <div hidden id="CreateAcct">
+            <legend>Create New Account</legend>
+            <p>
+                <label for="emailAddr">Your Email:</label>
+                <input type="text"
+                id = "CAemailAddr"
+                name="emailAddr"
+                placeholder = "Email"
+                title = "A verification will be sent to your email account"
+                minlength="8" 
+                size="25">
+            </p>
+
+            <p>
+                <label for="username">Username:</label>
+                <input type="text"
+                name="username" onblur="checkUsername()"
+                id = "CAuserName"
+                placeholder = "Username"
+                title = "Enter your desired username"
+                minlength="8" 
+                size="25">
+            </p>
+
+            <p>
+                <label for="password">Password:</label> 
+                <input type="password"    
+                name="password" onblur="checkPassword()"
+                id = "CApassword"
+                placeholder = "Password"
+                title = "Must be at least 8 characters and at least 1 letter, number and symbol"
+                minlength="8" 
+                size="25" >
+            </p>
+
+            <p>
+                <label>Retype Password: </label> 
+                <input type="password"
+                name="password2"
+                id = "CApassword2"
+                placeholder = "Retype password"
+                title = "Must match above password "
+                minlength="8" size="25">
+            </p>
+
+            <button  onclick="createAccount()">Create Account</button> 
+
+        </div>
+
+        <br><p id="serverOutput"></p>
+
+        <script>
+            //src = "./JS_sources/accounts.js"
+            //src = "accounts.js"
+            
+            var buttonFunc1 = function()
+            {
+                document.getElementById("CreateAcct").hidden = true;
+                document.getElementById("Signin").hidden = false;
+            }
+
+            var buttonFunc2 = function()
+            {
+                document.getElementById("Signin").hidden = true;
+                document.getElementById("CreateAcct").hidden = false;
+            }
+
+            ///
+            /// Sign in functions
+            ///
+
+            function validEmail() {
+                //check if valid email
+            }
+
+            function signin()
+            {
+                let urlparts = [];
+                let segments = window.location.href.split("/");
+                for(i = 0, ct=segments.length; i<ct; i++){
+                    if(segments[i] != ""){
+                        urlparts.push(segments[i]);
+                    }
+                }
+
+                let baseURL = urlparts[0] + "//" + urlparts[1];
+                fetch( baseURL + "/accounts/login", 
+                {
+                    method: "POST", 
+                    headers: 
+                        {
+                            'Accept': 'application/json',
+                            'Content-Type': "application/json"
+                        },
+                    body: JSON.stringify(
+                        {
+                            email: document.getElementById("signinEmail").value,
+                            password: document.getElementById("signinPassword").value
+                        }
+                    )
+                }).then(r =>  {
+                    if(r.status == 401){
+                        document.getElementById("serverOutput").innerHTML = "ERROR: Invalid email or password"
+                    }else if (r.status === 200){
+                        document.getElementById("serverOutput").innerHTML = "You are now logged in!";
+                    }
+                }).catch(error => {
+                    console.log(error);
+                });
+            }
+
+            ///
+            /// Register functions
+            ///
+            
+            function checkUsername()
+            {   
+                let username = document.getElementById("CAuserName").value;
+                let password = document.getElementById("CApassword").value;
+                // this function should check the database to see if the username already exists
+                //this function also checks whether the username meets requirements
+                if (username.trim() === '' || password.trim() === '') {
+                return false;
+            }
+
+            if (username.length < 6) {
+                return false;
+            }
+
+            if (password.length < 8) {
+                return false;
+            }
+
+            var hasUpperCase = /[A-Z]/.test(password);
+            var hasLowerCase = /[a-z]/.test(password);
+            var hasDigit = /\d/.test(password);
+            if (!hasUpperCase || !hasLowerCase || !hasDigit) {
+                return false;
+            }
+
+            return true;
+            }
+
+            function checkPassword()
+            {
+                // this function checks that the password meets requirements
+                const password = document.getElementById("signinPassword").value;
+            const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+            const valid = regex.test(password);
+            
+            if (!valid) {
+                alert("Password must be at least 8 characters long and contain at least one letter, one number, and one symbol.");
+                document.getElementById("signinPassword").value = "";
+            }
+            }
+
+            function checkPasswordCA()
+            {
+                // this function checks that the password meets requirements
+                const password = document.getElementById("CApassword").value;
+            const regex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+            const valid = regex.test(password);
+            
+            if (!valid) {
+                //alert("Password must be at least 8 characters long and contain at least one letter, one number, and one symbol.");
+                //document.getElementById("CApassword").value = "";
+            }
+            }
+
+            function checkPasswordMatch()
+            {
+                //this function checks to make sure the password and retyped password match
+                if(document.getElementById("CApassword").value !== document.getElementById("CApassword2").value){
+                    alert("Passwords do not match!");
+                    return false;
+                }
+                return true;
+            }
+
+
+            function createAccount()
+            {
+                //this function should send the attributes from the create account form to server.js which stores it in db
+                if (!checkPasswordMatch())
+                    return;
+
+                let urlparts = [];
+                let segments = window.location.href.split("/");
+                for(i = 0, ct=segments.length; i<ct; i++){
+                    if(segments[i] != ""){
+                        urlparts.push(segments[i]);
+                    }
+                }
+
+                let baseURL = urlparts[0] + "//" + urlparts[1];
+                fetch( baseURL + "/accounts/create", 
+                {
+                    method: "POST", 
+                    headers: 
+                        {
+                            'Accept': 'application/json',
+                            'Content-Type': "application/json"
+                        },
+                    body: JSON.stringify(
+                        {
+                            email: document.getElementById("CAemailAddr").value,
+                            user: document.getElementById("CAuserName").value,
+                            password: document.getElementById("CApassword").value
+                        }
+                    )
+                }).then(r =>  {
+                    if(r.status == 409){
+                        document.getElementById("serverOutput").innerHTML = "ERROR: Duplicate username or email"
+                    }else if (r.status === 201)
+                    document.getElementById("serverOutput").innerHTML = "Account created successfully!";
+                }).catch(error => {
+                    console.log(error);
+                });
+            }   
+        </script>
+    </body>
+</html>

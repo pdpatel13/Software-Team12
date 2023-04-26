@@ -12,6 +12,7 @@ const querystr = require('querystring');
 const mysql = require("mysql2");            //npm install mysql2
 const fbApp = require("firebase/app");      //npm install firebase
 const fdb = require("firebase/database");  //npm install firebase
+const cookieParser = require('cookie-parser')
 
 //Demo here
 
@@ -56,60 +57,42 @@ var category = function(req, res,urlparts) {
 
 var currentOrderID;
 var orders = function(req, res, urlparts) {
-    if(req.method === "POST"){
-        //Push data from json data inside request to firedb.
-        let body = req.body;
-        let newOrderID = currentOrderID + 1;
+    //Push data from json data inside request to firedb.
+    let body = req.body;
+    let newOrderID = currentOrderID + 1;
 
-        //calculate relevant metrics: total cost, timestamp, total qty
-        let totalcost = 0, totalqty = 0, timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        
-        for(let itemID in body){
-            if(itemID === "userID")
-                continue;
-            totalqty += body[itemID].qty;
-            totalcost += body[itemID].price * body[itemID].qty;
+    //calculate relevant metrics: total cost, timestamp, total qty
+    let totalcost = 0, totalqty = 0, timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    
+    for(let itemID in body){
+        if(itemID === "userID")
+            continue;
+        totalqty += body[itemID].qty;
+        totalcost += body[itemID].price * body[itemID].qty;
 
-            //Also we're gonna add each item to the orderItems tree while we're
-            //iterating, why not?!
-            fdb.update(fdb.ref(fireDB, "orders/orderItems/" + newOrderID), {
-                [itemID] : body[itemID].qty
-            })
-        }
-
-        //See sampleOrdersDB.json for structure inside db
-        fdb.set(fdb.ref(fireDB, "orders/ordermetadata/" + newOrderID), {
-            userid : "0",
-            cost : totalcost,
-            timestamp : timestamp,
-            orderStatus : "placed",
-            size : totalqty 
+        //Also we're gonna add each item to the orderItems tree while we're
+        //iterating, why not?!
+        fdb.update(fdb.ref(fireDB, "orders/orderItems/" + newOrderID), {
+            [itemID] : body[itemID].qty
         })
-
-        fdb.set(fdb.ref(fireDB, "orders/newestOrderId"), newOrderID);
-
-        let resMsg = {};
-        resMsg.code = 200;
-        resMsg.headers = {"Content-Type" : "text/plain"};
-        resMsg.body = "Order placed with ID: " + newOrderID;
-        return resMsg;
-
-
-
-    }else if(req.method === "GET"){
-
-        let resMsg = {};
-        resMsg.code = 200;
-        resMsg.headers = {"Content-Type" : "text/plain"};
-        resMsg.body = "Temporary filler text";
-        return resMsg;
-    }else {
-        let resMsg = {};
-        resMsg.code = 200;
-        resMsg.headers = {"Content-Type" : "text/plain"};
-        resMsg.body = "Temporary filler text";
-        return resMsg;
     }
+
+    //See sampleOrdersDB.json for structure inside db
+    fdb.set(fdb.ref(fireDB, "orders/ordermetadata/" + newOrderID), {
+        userid : "0",
+        cost : totalcost,
+        timestamp : timestamp,
+        orderStatus : "placed",
+        size : totalqty 
+    })
+
+    fdb.set(fdb.ref(fireDB, "orders/newestOrderId"), newOrderID);
+
+    let resMsg = {};
+    resMsg.code = 200;
+    resMsg.headers = {"Content-Type" : "text/plain"};
+    resMsg.body = "Order placed with ID: " + newOrderID;
+    return resMsg;
 };
 
 var requests = function(req, res, urlparts) {
@@ -120,70 +103,388 @@ var requests = function(req, res, urlparts) {
 
 var sales = function(req, res, urlparts) {
     //Create sales report table if not already exists with mySQL:
-    if(req.method === "GET"){
-        compactSqlQuery("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
-        "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
-        "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", false);
-        if(urlparts[urlparts.length-1].split("?").indexOf("nogen") == -1){
-            console.log("Requested sales reports with yes generation.");
-            //YES, DO GENERATE NEW SALES REPORT IN THIS CONDITION
+    if(urlparts[urlparts.length-1].split("?").indexOf("nogen") == -1){
+        console.log("Requested sales reports with yes generation.");
+        //YES, DO GENERATE NEW SALES REPORT IN THIS CONDITION
 
-            //Get highest reportID value in the table and continue from there:
-            var newRepID;
-            
-            dbCon.query("SELECT MAX(ReportID) FROM REPORT", function (err, result) {
-                if (err || isNaN(result[0]['MAX(ReportID)']) || result[0]['MAX(ReportID)'] == undefined)
-                {
-                    console.log(err, "res: ", result[0]['MAX(ReportID)']);
-                    newRepID = 0;
-                }else {
-                    newRepID = result[0]['MAX(ReportID)'] + 1;
-                }
-                //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
-                compactSqlQuery("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", false);
-            });   
+        //Get highest reportID value in the table and continue from there:
+        var newRepID;
+        
+        dbCon.query("SELECT MAX(ReportID) FROM REPORT", function (err, result) {
+            if (err || isNaN(result[0]['MAX(ReportID)']) || result[0]['MAX(ReportID)'] == undefined)
+            {
+                console.log(err, "res: ", result[0]['MAX(ReportID)']);
+                newRepID = 0;
+            }else {
+                newRepID = result[0]['MAX(ReportID)'] + 1;
+            }
+            //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
+            compactSqlQuery("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", false);
+        });   
+    }
+
+    //Either way, request all the reports and send them to client
+    compactSqlQuery("SELECT * FROM REPORT", false, function (result) {
+        //TODO: Send info to HTML on client.
+    });
+
+
+    let resMsg = {};
+    resMsg.code = 200;
+    resMsg.headers = {"Content-Type" : "text/plain"};
+    resMsg.body = "Temporary filler text";
+    return resMsg;
+}
+
+const jwt = require('jsonwebtoken');
+const secretKey = "my-secret-key";
+
+var createAccount = function(req, res, urlparts) {
+    let resMsg = {};
+
+    var post = req.body;
+    var username = post.user;
+    var email = post.email;
+    var password = post.password;
+
+    var query = "INSERT INTO `Accounts` (`UserName`, `Email`, `Password`) VALUES (?, ?, ?)";
+    dbCon.query(query, [username, email, password], function(err, result, fields) {
+        if (err && err.code === 'ER_DUP_ENTRY') {
+            console.log(err);
+            resMsg.code = 409;
+            resMsg.headers = {"Content-Type": 'application/json'};
+            resMsg.body = JSON.stringify({ message: 'Username or email already exists' });
+
+            res.writeHead(resMsg.code, resMsg.headers),
+            res.end(resMsg.body);
+            return;
+        }
+        else if (err) {
+            console.log(err);
+            throw err;
+        }
+        
+        resMsg.code = 201;
+        resMsg.headers = {"Content-Type": 'application/json'};
+        resMsg.body = JSON.stringify({ accountId: result.insertId });
+        
+        res.writeHead(resMsg.code, resMsg.headers),
+        res.end(resMsg.body);
+    });      
+}
+
+var authenticate = function(req, res, urlparts){
+    var post = req.body;
+    var email = post.email;
+    var password = post.password;
+
+    // Check if user exists and password is correct
+    var query = "SELECT * FROM `Accounts` WHERE `Email` = ? AND `Password` = ?";
+    dbCon.query(query, [email, password], function(err, result, fields) {
+        if (err) throw err;
+
+        // If no user found or password is incorrect, return error response
+        if (result.length === 0) {
+            res.statusCode = 401;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ message: 'Invalid email or password' }));
+            return;
         }
 
-        //Either way, request all the reports and send them to client
-        compactSqlQuery("SELECT * FROM REPORT", false, function (result) {
-            //TODO: Send info to HTML on client.
-        });
-
-
-        let resMsg = {};
-        resMsg.code = 200;
-        resMsg.headers = {"Content-Type" : "text/plain"};
-        resMsg.body = "Temporary filler text";
-        return resMsg;
+        // If user exists and password is correct, generate JWT token and return it in the response
+        const token = jwt.sign(result[0], secretKey);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
         
+        res.cookie("jwt", token, {secure: false, httpOnly: true});
+        res.cookie("userID", result[0].userID, {secure: false, httpOnly: false});
+        res.cookie("username", result[0].UserName, {secure: false, httpOnly: false});
+        res.send()
+        //res.end(JSON.stringify({ token: token }));
+    });
+}
 
-    }else if(req.method === "POST"){
-        //This is just here as a matter of template-- there is no reason right now to make a POST request to sales.
-        let resMsg = {};
-        resMsg.code = 200;
-        resMsg.headers = {"Content-Type" : "text/plain"};
-        resMsg.body = "Temporary filler text";
-        return resMsg;
-    }else {
-        let resMsg = {};
-        resMsg.code = 200;
-        resMsg.headers = {"Content-Type" : "text/plain"};
-        resMsg.body = "Temporary filler text";
-        return resMsg;
+var accountInfo = function(req, res, urlparts) {
+    try {
+      const accountId = req.url.split('/')[2];
+
+      // Select the row where UserID equals the ID of the authenticated user
+      var query = `SELECT * FROM Accounts WHERE UserID = ${req.user.userID}`;
+
+      console.log("doing sql next");
+
+      dbCon.query(query, function (err, result, fields) {
+        if (err) throw err;
+        console.log("result is: ", result[0]);
+
+        // If the user does not have permission to view the requested account, return error response
+        if (result.length === 0 || result[0].userID !== parseInt(accountId)) {
+          res.statusCode = 401;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ message: 'Unauthorized' }));
+          return;
+        }
+
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify(result));
+      });
+
+    } catch (error) {
+      res.statusCode = 401;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ message: 'Invalid token' }));
+      return;
     }
 }
 
-var createAccount = function(req, res, urlparts) {
-    compactSqlQuery
-    (
-        "INSERT INTO `Account Database`\
-        (`UserID`, `UserName`, `Email`, `Password`) \
-        VALUES \
-        (1, 'D4', 'deaningramiv@gmail.com', '1234');",
-        false
-    );    
-
+var updateAccount = function(req, res, urlparts) {
+    try {
+        const accountId = req.url.split('/')[2];
+        let accountData = {}; // Initialize accountData to an empty object
+        try {
+          accountData = JSON.parse(req.body);
+        } catch (error) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ message: 'Invalid request body' }));
+          return;
+        }          
+          
+        // Construct an SQL query to update the account
+        let query = 'UPDATE accounts SET ';
+        const keys = Object.keys(accountData);
+        const values = Object.values(accountData);
+        
+        for (let i = 0; i < keys.length; i++) {
+          if (values[i] === '') {
+            continue; // Skip empty fields
+          }
+          
+          query += `${keys[i]}='${values[i]}'`;
+          
+          if (i !== keys.length - 1) {
+            query += ',';
+          }
+        }
+        
+        query += ` WHERE userID=${accountId}`;
+        dbCon.query(query, function (err, result, fields) {
+          if (err) throw err;
+          res.writeHead(200, {'Content-Type': 'application/json'});
+          res.end(JSON.stringify({ message: 'Account updated successfully' }));
+        });
+    } catch (error) {
+      res.statusCode = 401;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ message: 'Invalid token' }));
+      return;
+    }
 }
+
+var deleteAccount = function(req, res, urlparts) {
+    //const token = req.headers.authorization?.split(' ')[1];
+
+    try {
+        //Authorization is now taken care of in the middleman function.
+        /*
+        const decodedToken = jwt.verify(token, secretKey);
+        */
+        // If token is valid, continue with the request
+        const accountId = req.url.split('/')[2];
+        
+
+        // Select the row where UserID equals the ID of the authenticated user and the account ID matches the requested account ID
+        var query = `DELETE FROM Accounts WHERE UserID = ${req.user.userID}`;
+
+        dbCon.query(query, function (err, result, fields) {
+            if (err) throw err;
+
+            // If the user does not have permission to delete the requested account, return error response
+            if (result.affectedRows === 0) {
+                res.statusCode = 401;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ message: 'Unauthorized' }));
+                return;
+            }
+
+            res.writeHead(200, {'Content-Type': 'application/json'});
+            res.end(JSON.stringify({ message: 'Account deleted successfully' }));
+        });
+
+    } catch (error) {
+      res.statusCode = 401;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ message: 'Invalid token' }));
+      return;
+    }
+}
+
+//List of protected routes with their methods
+const protectedRoute = function(req){
+    let url = req.url;
+    if (req.method === 'GET' && req.url.startsWith('/accounts'))
+        return true;
+    if (req.method === 'PATCH' && req.url.startsWith('/accounts'))
+        return true;
+    if (req.method === 'DELETE' && req.url.startsWith('/accounts'))
+        return true;
+
+    return false;
+}
+
+//Middleware function to authenticate token
+const authenticateToken = function(req, res, next){
+    if(!protectedRoute(req)){
+        next();            //so that when the page changes it is still stored
+        return;
+    }
+    let token = req.cookies.jwt;
+
+    if(token == null) return res.sendStatus(401);
+    console.log("We authenticating");
+
+    jwt.verify(token, secretKey, (err, user) => {
+        console.log(err);
+
+        if(err) return res.sendStatus(403); 
+        req.user = user;
+        next();
+    });
+}
+
+const setupSqlDatabase = function() {
+    //Both db.query and compactSqlQuery do the same thing, compactSqlQuery just has a bool to log response from SQL too.
+    dbCon.query("CREATE TABLE if not exists `Accounts` (\
+        `userID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\
+        `UserName` varchar(20) UNIQUE NOT NULL,\
+        `Email` varchar(40) UNIQUE NOT NULL,\
+        `Password` varchar(20) NOT NULL,\
+        `FirstName` text,\
+        `LastName` text,\
+        `Birthday` date,\
+        `Role` char(1),\
+        `CreditCard` bigint(16),\
+        `SecurityCode` int(3),\
+        `ExpirationDate` date\
+      ) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
+      
+    compactSqlQuery("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
+    "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
+    "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", false);
+}
+
+const router = function(req, res){
+    //Split up the received uri
+    let urlparts = [];
+    let segments = req.url.split("/");
+    for(i = 0, ct=segments.length; i<ct; i++){
+        if(segments[i] != ""){
+            urlparts.push(segments[i]);
+        }
+    }
+    let resMsg = {};
+    let done = false;
+
+    if(req.method == "GET"){
+        if(done === false && /\/dbStatus/.test(req.url)){
+            resMsg = dbstatus(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && req.url.startsWith("/accounts")){
+            resMsg = accountInfo(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/inventory/.test(req.url)){
+            resMsg = inventory(req, res, urlparts);
+            done = true;
+        }
+    
+        if(done === false && /\/search/.test(req.url)){
+            resMsg = search(req, res, urlparts);
+            done = true;
+        }
+    
+        if(done === false && /\/review/.test(req.url)){
+            resMsg = review(req, res, urlparts);
+            done = true;
+        }
+    
+        if(done === false && /\/productName/.test(req.url)){
+            resMsg = productName(req, res, urlparts);
+            done = true;
+        }
+    
+        if(done === false && /\/category/.test(req.url)){
+            resMsg = category(req, res, urlparts);
+            done = true;
+        }
+    
+        if(done === false && /\/requests/.test(req.url)){
+            resMsg = requests(req, res, urlparts);
+            done = true;
+        }
+    
+        if(done === false && /\/sales/.test(req.url)){
+            resMsg = sales(req, res, urlparts);
+            done = true;
+        }
+    }else if(req.method == "POST"){
+        if(done === false && /\/accounts\/login/.test(req.url)){
+            authenticate(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/accounts\/create/.test(req.url)){
+            createAccount(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/makeorder/.test(req.url)){
+            resMsg = orders(req, res, urlparts);
+            done = true;
+        }
+    }else if(req.method == "PATCH"){
+        if(done === false && req.url.startsWith("/accounts/")){
+            resMsg = updateAccount(req, res, urlparts);
+            done = true;
+        }
+    }else if(req.method == "DELETE"){
+        if(done === false && req.url.startsWith("/accounts/")){
+            resMsg = deleteAccount(req, res, urlparts);
+            done = true;
+        }
+    }
+
+    if(done && JSON.stringify(resMsg) != JSON.stringify({}) && resMsg != null && resMsg != undefined){
+        console.log(resMsg);
+        res.writeHead(resMsg.code, resMsg.headers),
+        res.end(resMsg.body);
+    }
+    else if(!done){
+        //If no use case was found for the URL and method combo, maybe we want to load a page with that name.
+        if(req.method == "GET") {
+            res.writeHead(200, {'Content-Type': 'text/html'});
+
+            res.write(req.url);
+            if(req.url == "/")
+                fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
+            else {
+                //We use .then() and .catch() b/c fs.promises is async.
+                fs.access(__dirname + "/pages" + req.url + ".html", fsc.F_OK)
+                .then(() => fs.readFile(__dirname + "/pages" + req.url + ".html").then(contents => res.end(contents)))
+                .catch(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
+            }
+        }else {
+            console.log("forcing 404 for ", req.url);
+            fs.access(__dirname + "/pages" + req.url + ".html", fsc.F_OK)
+            .then(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
+        }
+    }
+}
+
+/*
 //This requestHandler is currently built to respond to expected HTTP requests. Some unexpected http requests (i.e. requests
 //for which no function is defined above) may also have responses in the form of HTML pages (like "/about").
 const requestHandlerHTML = function(req, res){
@@ -313,8 +614,8 @@ const requestHandlerHTML = function(req, res){
                 .catch((error) => console.error(error));
         }
     });
-*/
-}
+
+}*/
 
 //setting up mySQL database, still needs work
 //from lec8 REST server example slides
@@ -354,6 +655,7 @@ dbCon.connect(function(err)
         });
     }
 
+    setupSqlDatabase();
     mysqlLoaded = true;
 });
 
@@ -412,7 +714,7 @@ var compactSqlQuery = function(query, log=false, handler) {
 
 
 //http.createServer(requestHandlerHTML).listen(8080);
-app.use(express.json(), requestHandlerHTML);
+app.use(express.json(), cookieParser(), authenticateToken, router);
 app.listen(8080);
 
 
