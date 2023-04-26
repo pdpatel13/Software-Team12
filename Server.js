@@ -387,6 +387,7 @@ var authenticate = function(req, res, urlparts){
         res.setHeader('Content-Type', 'application/json');
         
         res.cookie("jwt", token, {secure: false, httpOnly: true});
+        res.cookie("authTime", new Date().toISOString().slice(0, 19).replace('T', ' '), {secure: false, httpOnly: true});
         res.cookie("userID", result[0].userID, {secure: false, httpOnly: false});
         res.cookie("username", result[0].UserName, {secure: false, httpOnly: false});
         res.cookie("userRank", result[0].Role, {secure: false, httpOnly: true});
@@ -512,6 +513,7 @@ var logout = function(req, res, urlparts) {
 
     res.clearCookie("jwt");
     res.clearCookie("userID");
+    res.clearCookie("authTime");
     res.clearCookie("username");
     res.clearCookie("userRank");
     res.end()
@@ -652,6 +654,16 @@ const protectedRoute = function(req){
 
 //Middleware function to authenticate token
 const authenticateToken = function(req, res, next){
+
+    if(new Date(new Date().toISOString().slice(0, 19).replace('T', ' ')) - new Date(req.cookies.authTime)  > 60000 * 30){ //After 30 minutes, auto log out
+        //We should be deauthorized
+        res.clearCookie("jwt");
+        res.clearCookie("authTime");
+        res.clearCookie("userID");
+        res.clearCookie("username");
+        res.clearCookie("userRank");
+    }
+
     let clearance = protectedRoute(req);
     if(clearance == 0){
         next();            //so that when the page changes it is still stored
