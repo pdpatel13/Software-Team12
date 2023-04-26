@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Feedback Form</title>
+    <link rel="stylesheet" href="style2.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+
+</head>
+
+<body>
+    <div class="banner">
+        <h1>Bestest Buy</h1>
+   
+    <div class="links">
+        <a href="/">Home</a>
+        <a href="/accountPage">Accounts</a>
+        <a href="/reports">Reports</a>
+        <a href="/products">Browse Products</a>
+        <a href="/admin">Admin</a>
+    </div>
+ </div>
+
+    <div class="title"> 
+        <h1>Costumer Reviews</h1>
+    </div>
+
+<!-- Review modal-->
+<div class="modal-wrap2 display-none">
+    <div class="modal2">
+        <img src="bestest-best.svg" alt="">
+        <p> Thank you for your submission!</p>
+        <button class="btn modal-close">Close</button>
+    </div>
+</div>
+
+
+
+<!-- select which way you want to sort list-->
+<select id="sort-by">
+    <option value="default">Sort by default</option>
+    <option value="rating-high-to-low">Sort by rating (high to low)</option>
+    <option value="rating-low-to-high">Sort by rating (low to high)</option>
+</select>
+  
+<!-- opens review form and lets you fill out form-->
+<button id="open-form-btn">Leave a Review</button>
+<br>
+<div>
+    Total reviews: <span id="total-reviews"></span>
+</div>
+<div>
+    avg reviews: <span id="average-rating"></span>
+</div>
+  
+
+<hr class="top-hr">
+
+<!--Form-->
+<div class="modal-wrap display-none">
+  <div class="modal">
+    <div class="close-btn" id="close-form-btn"><i class="fa fa-times"></i></div>
+    <form class="review-form" id="review-form">
+      <!-- form fields -->
+        <h2> Create a Review </h2>
+        <label for="name"> Name:</label>
+        <input type="text" class="name"  placeholder="Your Name" required>
+        
+        <label>Rating:</label>
+        <select class="rating" required>
+            <option value="">--Select rating--</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+        
+      
+
+
+        <label>Feedback:</label>
+        <input 
+            type="text"
+            class="headline"
+            placeholder="Title" 
+            required>
+
+        <textarea 
+            class="feedback" 
+            placeholder="Your review..."
+            cols="22"
+            rows="8" 
+            required></textarea>
+        
+        <label>I agree to the terms and conditions:
+        <input type="checkbox" class="terms"  required>
+        </label>
+        
+        <button class="btn submit-form" type="submit">Submit</button>
+    </form>
+    <br>
+
+    
+  </div>
+</div>
+
+<div id="reviews-container"></div>
+
+
+
+
+
+	    
+
+<script src="firebase2.js"></script>
+<script src="main2.js"></script>
+</body>
+</html>

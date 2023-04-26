@@ -7,6 +7,7 @@
 var http = require('http');
 var fs  = require('fs').promises; 
 var fsc = require('fs').constants;
+var path = require('path');
 const express = require('express');         //npm install express --save
 const querystr = require('querystring');    
 const mysql = require("mysql2");            //npm install mysql2
@@ -15,6 +16,7 @@ const fdb = require("firebase/database");  //npm install firebase
 const cookieParser = require('cookie-parser')
 
 //Demo here
+var sApiKey = "";
 
 //The following functions: accounts, inventory, review, search, productName, category, orders, requests, and sales
 //are all of the topmost domains (i.e. website.com/accounts, or website.com/inventory). These will be called when
@@ -199,6 +201,36 @@ var deleteItem = function(req, res, urlparts) {
     });
 };
 
+var sendEmail = function(contents) {
+    let reqEmail = {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + sApiKey,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            personalizations: [{
+                to: [{
+                    email: "jma396@scarletmail.rutgers.edu",
+                    name: "Bestest Buy Admin"
+                }],
+                subject: "Order Placed!"}],
+            content: [{
+                type: "text/plain",
+                value: contents
+            }],
+            from: {
+                email: "watermelonsplash92@gmail.com",
+                name: "Bestest Buy Noreply"
+            },
+            reply_to: {
+                email: "watermelonsplash92@gmail.com",
+                name: "Bestest Buy Noreply"
+            }
+        })
+    }
+    fetch("https://api.sendgrid.com/v3/mail/send", reqEmail);
+};
 
 var review = function(req, res, urlparts) {
     let resMsg = {};
@@ -258,6 +290,9 @@ var orders = function(req, res, urlparts) {
     resMsg.code = 200;
     resMsg.headers = {"Content-Type" : "text/plain"};
     resMsg.body = "Order placed with ID: " + newOrderID;
+
+    sendEmail("Order ID: "+ newOrderID);
+
     return resMsg;
 };
 
@@ -268,7 +303,7 @@ var requests = function(req, res, urlparts) {
 
 var viewReport = function(req,res,urlparts) {
     let resMsg = {};
-    dbCon.query("SELECT * FROM REPORT WHERE ReportId = " + req.body, function(err, result){
+    dbCon.query("SELECT * FROM REPORT WHERE ReportId = " + req.body.id, function(err, result){
         if(err){
             resMsg.code = 400;
             resMsg.headers = {"Content-Type" : "application/json"};
@@ -276,7 +311,7 @@ var viewReport = function(req,res,urlparts) {
         }else {
             resMsg.code = 200;
             resMsg.headers = {"Content-Type" : "application/json"};
-            resMsg.body = JSON.stringify(result);
+            resMsg.body = JSON.stringify(result[0]);
         }
 
         res.writeHead(resMsg.code, resMsg.headers);
@@ -431,6 +466,7 @@ var authenticate = function(req, res, urlparts){
         res.setHeader('Content-Type', 'application/json');
         
         res.cookie("jwt", token, {secure: false, httpOnly: true});
+        res.cookie("authTime", new Date().toISOString().slice(0, 19).replace('T', ' '), {secure: false, httpOnly: true});
         res.cookie("userID", result[0].userID, {secure: false, httpOnly: false});
         res.cookie("username", result[0].UserName, {secure: false, httpOnly: false});
         res.cookie("userRank", result[0].Role, {secure: false, httpOnly: true});
@@ -556,6 +592,7 @@ var logout = function(req, res, urlparts) {
 
     res.clearCookie("jwt");
     res.clearCookie("userID");
+    res.clearCookie("authTime");
     res.clearCookie("username");
     res.clearCookie("userRank");
     res.end()
@@ -576,6 +613,81 @@ var viewInventory = function(req, res, urlparts) {
         res.setHeader('Content-Type', 'application/json');
         console.log(result);
         res.end(JSON.stringify(result));
+    });
+}
+
+const viewOrder = function(req, res, urlparts) {
+    let resMsg = {};
+    resMsg.headers = {"Content-Type" : "application/json"};
+
+    fdb.get(fdb.child(fdb.ref(fireDB), 'orders/orderItems/' + req.body.id)).then(snapshot =>{
+        if(snapshot.exists()){
+            resMsg.code = 200;
+            resMsg.body = JSON.stringify(snapshot);
+        }else {
+            resMsg.code = 400;
+            resMsg.body = JSON.stringify("Could not find order with given ID");
+        }
+        res.writeHead(resMsg.code, resMsg.headers);
+        res.end(resMsg.body);
+    })
+}
+
+const modifyOrder = function(req, res, urlparts) {
+    console.log(req.body);
+    fdb.update(fdb.ref(fireDB, "orders/ordermetadata/" + req.body.id), {orderStatus: req.body.status}).then(out => {
+        let resMsg = {};
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "application/json"};
+        console.log(out);
+        resMsg.body = JSON.stringify(out);
+        res.writeHead(resMsg.code, resMsg.headers);
+        res.end(resMsg.body);
+    });
+}
+
+const findItemsByTrait = function(req, res, urlparts){
+    var query = "SELECT * FROM `Inventory` WHERE `"+ req.body.column +"` = " + req.body.value;
+    dbCon.query(query, function(err, result, fields) {
+        if(err) {
+            console.log(err);
+            res.statusCode = 400;
+            res.end();
+            return;
+        }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(result));
+    });
+}
+
+const getOrders =function(req, res, urlparts) {
+    let resMsg = {};
+    fdb.get(fdb.child(fdb.ref(fireDB), 'orders/newestOrderId')).then(snapshot => {
+        if(snapshot.exists()){
+            let latestOrderID = snapshot.val();
+            var orderMetadatas = {};
+            let done = 1;
+            for(let counter = Number(latestOrderID); counter > 0; counter--){
+                fdb.get(fdb.child(fdb.ref(fireDB), 'orders/ordermetadata/'+counter)).then(snapshot => {
+                    done++;
+                    if(snapshot.exists()){
+                        orderMetadatas[""+counter]= snapshot.val();
+                        if(done == latestOrderID){
+                            resMsg.code = 200;
+                            resMsg.headers = {"Content-Type" : "application/json"};
+                            resMsg.body = JSON.stringify(orderMetadatas);
+
+                            res.writeHead(resMsg.code, resMsg.headers);
+                            res.end(resMsg.body);
+                        }
+                    }else {
+                    }
+                });
+            }
+        }
+        else
+            console.log("snapshot does not exist");
     });
 }
 
@@ -601,11 +713,19 @@ const protectedRoute = function(req){
         return 1;
     if (req.method === 'GET' && req.url.startsWith('/makeOrder'))
         return 1;
+    if (req.method === 'GET' && req.url.startsWith('/getOrders'))
+        return 2;
+    if (req.method === 'POST' && req.url.startsWith('/modifyOrder'))
+        return 2;
+    if (req.method === 'POST' && req.url.startsWith('/viewOrder'))
+        return 2;
     if (req.method === 'GET' && req.url.startsWith('/admin'))
         return 3;
     if (req.method === 'POST' && req.url.startsWith('/inventory'))
         return 3;
     if (req.method === 'GET' && req.url.startsWith('/reports'))
+        return 3;
+    if (req.method === 'POST' && req.url.startsWith('/viewReport'))
         return 3;
 
     return 0;
@@ -613,6 +733,16 @@ const protectedRoute = function(req){
 
 //Middleware function to authenticate token
 const authenticateToken = function(req, res, next){
+
+    if(new Date(new Date().toISOString().slice(0, 19).replace('T', ' ')) - new Date(req.cookies.authTime)  > 60000 * 30){ //After 30 minutes, auto log out
+        //We should be deauthorized
+        res.clearCookie("jwt");
+        res.clearCookie("authTime");
+        res.clearCookie("userID");
+        res.clearCookie("username");
+        res.clearCookie("userRank");
+    }
+
     let clearance = protectedRoute(req);
     if(clearance == 0){
         next();            //so that when the page changes it is still stored
@@ -622,6 +752,7 @@ const authenticateToken = function(req, res, next){
     let role = req.cookies.userRank;
     if(token == null) return res.sendStatus(401);
     if(clearance == 3 && role != "admin") return res.sendStatus(401);
+    if(clearance == 2 && role != "admin" && role != "staff") return res.sendStatus(401);
     jwt.verify(token, secretKey, (err, user) => {
         if(err) console.log(err);
         if(err) return res.sendStatus(403);
@@ -652,7 +783,7 @@ const setupSqlDatabase = function() {
     dbCon.query("CREATE TABLE if not exists `Inventory` (\
     `productID` INT(8) NOT NULL UNIQUE AUTO_INCREMENT,\
     `productName` varchar(30) UNIQUE NOT NULL,\
-    `desc` varchar(100) UNIQUE NOT NULL,\
+    `desc` varchar(100) NOT NULL,\
     `unitPrice` DECIMAL(15,2) NOT NULL,\
     `onHand` INT(4),\
     `category` VARCHAR(20),\
@@ -683,6 +814,11 @@ const router = function(req, res){
     let done = false;
 
     if(req.method == "GET"){
+        if(done === false && /\/getOrders/.test(req.url)){
+            resMsg = getOrders(req, res, urlparts);
+            done = true;
+        }
+
         if(done === false && /\/dbStatus/.test(req.url)){
             resMsg = dbstatus(req, res, urlparts);
             done = true;
@@ -733,7 +869,24 @@ const router = function(req, res){
             done = true;
         }
     }else if(req.method == "POST"){
-        if(done === false && /\/;/.test(req.url)){
+        
+        if(done === false && /\/findItemsByTrait/.test(req.url)){
+            findItemsByTrait(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/modifyOrder/.test(req.url)){
+            resMsg = modifyOrder(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/viewOrder/.test(req.url)){
+            resMsg = viewOrder(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/viewReport/.test(req.url)){
+            console.log("viewreport");
             viewReport(req, res, urlparts);
             done = true;
         }
@@ -789,7 +942,6 @@ const router = function(req, res){
         if(req.method == "GET") {
             res.writeHead(200, {'Content-Type': 'text/html'});
 
-            res.write(req.url);
             if(req.url == "/")
                 fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
             else {
@@ -847,6 +999,10 @@ dbCon.connect(function(err)
     mysqlLoaded = true;
 });
 
+fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
+    sApiKey = JSON.parse(contents).key;
+});
+
 //Set up firebase for noSQL db usage
 //TODO: IF YOU HAVE NOT YET DOWNLOADED THE API KEY FILE FROM DISCORD, DO SO AND DROP IT INTO THE SAME FOLDER AS SERVER.JS. DO NOT DISTRIBUTE THAT FILE.
 // Your web app's Firebase configuration
@@ -902,7 +1058,9 @@ var compactSqlQuery = function(query, log=false, handler) {
 
 
 //http.createServer(requestHandlerHTML).listen(8080);
-app.use(express.json(), cookieParser(), authenticateToken, router);
+var dir = path.join(__dirname, 'pages');
+
+app.use(express.static(dir), express.json(), cookieParser(), authenticateToken, router);
 app.listen(8080);
 
 
