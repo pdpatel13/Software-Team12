@@ -1,0 +1,56 @@
+body {
+    background-color: #fddc04; /* Best Buy yellow */
+    font-family: Arial, sans-serif; /* make text easier to read */
+  }
+  
+  .container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  
+  .box {
+    width: 40%;
+    padding: 40px;
+    background-color: #ffffff;
+    box-shadow: 0px 0px 20px rgba(0,0,0,0.1);
+    margin: 20px;
+    text-align: center;
+  }
+  
+  h1 {
+    color: #0071c5; /* Best Buy blue */
+    font-size: 48px;
+    font-weight: bold;
+    margin-top: 50px;
+  }
+  
+  p {
+    color: #0071c5; /* Best Buy blue */
+    font-size: 24px;
+    margin-top: 50px;
+  }
+  
+  a.button {
+    display: inline-block;
+    color: white;
+    background-color: #0071c5; /* Best Buy blue */
+    font-size: 18px;
+    text-decoration: none;
+    border: none;
+    padding: 10px 20px;
+    margin: 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  a.button:hover {
+    background-color: #005397; /* darker Best Buy blue on hover */
+  }
+  
+  a.button:last-of-type {
+    margin-right: 0; /* remove right margin on last button */
+  }
+  

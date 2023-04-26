@@ -38,9 +38,13 @@ var addItem = function(req, res, urlparts) {
     var pDesc = post.desc;
     var pPrice = post.price;
     var pSupplier = post.supplier;
+    var pAmount = post.amount;
+    var pSize = post.size;
+    var pWeight = post.weight;
+    var pCategory = post.category;
 
-    var query = "INSERT INTO `Inventory` (`productName`, `desc`, `unitPrice`, `supplierID`) VALUES (?, ?, ?, ?)";
-    dbCon.query(query, [pName, pDesc, pPrice, pSupplier], function(err, result, fields) {
+    var query = "INSERT INTO `Inventory` (`productName`, `desc`, `unitPrice`, `supplierID`, `onHand`, `size`, `weight`, `category`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    dbCon.query(query, [pName, pDesc, pPrice, pSupplier, pAmount, pSize, pWeight, pCategory], function(err, result, fields) {
         if (err && err.code === 'ER_DUP_ENTRY') {
             console.log(err);
             resMsg.code = 409;
@@ -64,6 +68,59 @@ var addItem = function(req, res, urlparts) {
         res.end(resMsg.body);
     });      
 };
+
+var deleteItem = function(req, res, urlparts) {
+    let resMsg = {};
+  
+    var post = req.body;
+    let pName = post.name;
+  
+    // Execute the SQL query to retrieve the product ID
+    let query = "SELECT `productId` FROM `Inventory` WHERE `productName` = ?";
+    dbCon.query(query, [pName], function(err, result, fields) {
+      if (err) {
+        console.log(err);
+        throw err;
+      }
+  
+      if (result.length === 0) {
+        // If no rows were returned, return a 404 error
+        resMsg.code = 404;
+        resMsg.headers = {"Content-Type": 'application/json'};
+        resMsg.body = JSON.stringify({ message: 'Product not found' });
+        res.writeHead(resMsg.code, resMsg.headers),
+        res.end(resMsg.body);
+        return;
+      }
+  
+      let productId = result[0].productId;
+  
+      // Execute the SQL query to delete the product from the Inventory table
+      query = "DELETE FROM `Inventory` WHERE `productId` = ?";
+      dbCon.query(query, [productId], function(err, result, fields) {
+        if (err) {
+          console.log(err);
+          throw err;
+        }
+  
+        if (result.affectedRows === 0) {
+          // If no rows were deleted, return a 404 error
+          resMsg.code = 404;
+          resMsg.headers = {"Content-Type": 'application/json'};
+          resMsg.body = JSON.stringify({ message: 'Product not found' });
+        } else {
+          // If the product was successfully deleted, return a 204 No Content response
+          resMsg.code = 204;
+          resMsg.headers = {};
+          resMsg.body = '';
+        }
+  
+        res.writeHead(resMsg.code, resMsg.headers),
+        res.end(resMsg.body);
+      });
+    });
+  };
+  
 
 var review = function(req, res, urlparts) {
     let resMsg = {};
@@ -534,7 +591,7 @@ const router = function(req, res){
             done = true;
         }
 
-        if(done === false && /\/inventory/.test(req.url)){
+        if(done === false && /\/admin\/add/.test(req.url)){
             resMsg = addItem(req, res, urlparts);
             done = true;
         }
@@ -556,6 +613,11 @@ const router = function(req, res){
     }else if(req.method == "DELETE"){
         if(done === false && req.url.startsWith("/accounts/")){
             resMsg = deleteAccount(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && req.url.startsWith("/admin/delete/")){
+            resMsg = deleteItem(req, res, urlparts);
             done = true;
         }
     }
