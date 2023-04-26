@@ -15,10 +15,11 @@
         <a href="/admin">Admin</a>
         <a href="/userorder">Make a (Manual) Order!</a>
 
-        <button onclick="buttonFunc1()">Sign In</button>
-        <button onclick="buttonFunc2()">Create Account</button>
+        <button id="signInButton" onclick="buttonFunc1()">Sign In</button>
+        <button id="logOutButton" onclick="buttonFunc3()">Log Out</button>
+        <button id="registerButton" onclick="buttonFunc2()">Create Account</button>
 
-        <div hidden id="Signin">
+        <fieldset hidden id="Signin">
             <legend>Sign in</legend>
             <p>
                 <label>Email: <input type="text"
@@ -37,9 +38,9 @@
                 </label>
             </p>
             <input type="submit" value="Sign In" onclick="signin()">
-        </div>
+        </fieldset>
 
-        <div hidden id="CreateAcct">
+        <fieldset hidden id="CreateAcct">
             <legend>Create New Account</legend>
             <p>
                 <label for="emailAddr">Your Email:</label>
@@ -86,7 +87,7 @@
 
             <button  onclick="createAccount()">Create Account</button> 
 
-        </div>
+        </fieldset>
 
         <br><p id="serverOutput"></p>
 
@@ -94,6 +95,26 @@
             //src = "./JS_sources/accounts.js"
             //src = "accounts.js"
             
+            const username =  document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("username="))
+            ?.split("=")[1];
+
+            const userID = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("userID="))
+            ?.split("=")[1];
+
+            if(username === undefined || userID === undefined){
+                document.getElementById("logOutButton").hidden = true;
+                document.getElementById("registerButton").hidden = false;
+                document.getElementById("signInButton").hidden = false;
+            }else {
+                document.getElementById("logOutButton").hidden = false;
+                document.getElementById("registerButton").hidden = true;
+                document.getElementById("signInButton").hidden = true;
+            }
+
             var buttonFunc1 = function()
             {
                 document.getElementById("CreateAcct").hidden = true;
@@ -104,6 +125,35 @@
             {
                 document.getElementById("Signin").hidden = true;
                 document.getElementById("CreateAcct").hidden = false;
+            }
+
+            var buttonFunc3 = function()
+            {
+                let urlparts = [];
+                let segments = window.location.href.split("/");
+                for(i = 0, ct=segments.length; i<ct; i++){
+                    if(segments[i] != ""){
+                        urlparts.push(segments[i]);
+                    }
+                }
+
+                let baseURL = urlparts[0] + "//" + urlparts[1];
+                fetch( baseURL + "/accounts/logout", 
+                {
+                    method: "GET", 
+                    headers: 
+                        {
+                            'Content-Type': "application/json"
+                        },
+                }).then(r =>  {
+                    if(r.status == 200){
+                        document.getElementById("serverOutput").innerHTML = "Logged Out Sucessfully";
+                    }else {
+                        document.getElementById("serverOutput").innerHTML = "ERROR LOGGING OUT";
+                    }
+                }).catch(error => {
+                    console.log(error);
+                });
             }
 
             ///

@@ -2,11 +2,15 @@
 <html>
     <head>
         <title>Bestest Buy</title>
-        <h1>Welcome to Bestest Buy</h1>
-        <h1>Welcome to Bestest Buy</h1>
     </head>
     
     <body>
+        
+        <title>Bestest Buy</title>
+        <h1>Welcome to Bestest Buy</h1>
+
+        <br>
+
         <!-- This is just for navigation of the sample pages. -->
         <p>This is the home page.</p>
         <a href="/">Home</a>
@@ -31,21 +35,20 @@
             with a response from the server, as opposed to the server completely overwriting the currently loaded
             page/response -->
         <script>
-            let cookieValue = null;
-            try {
-                cookieValue = document.cookie
-                .split("; ")
-                .find((row) => row.startsWith("username="))
-                ?.split("=")[1];
-                
-                console.log(cookieValue);
-            }catch(err){
+            const username =  document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("username="))
+            ?.split("=")[1];
 
-            }
-            if(cookieValue === NaN || cookieValue === null || cookieValue === "NaN"){
+            const userID = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("userID="))
+            ?.split("=")[1];
+
+            if(username === undefined || userID === undefined){
                 document.getElementById('ManageUser').innerHTML = "Not signed in yet :(";
             }else {
-                document.getElementById('ManageUser').innerHTML = "Welcome back " + cookieValue + "!";
+                document.getElementById('ManageUser').innerHTML = "Welcome back " + username + "!";
             }
 
             var buttonFunc = function(){

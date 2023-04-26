@@ -30,9 +30,39 @@ var dbstatus = function(req, res, urlparts) {
     return resMsg;
 };
 
-var inventory = function(req, res, urlparts) {
+var addItem = function(req, res, urlparts) {
     let resMsg = {};
-    return resMsg;
+
+    var post = req.body;
+    var pName = post.name;
+    var pDesc = post.desc;
+    var pPrice = post.price;
+    var pSupplier = post.supplier;
+
+    var query = "INSERT INTO `Inventory` (`productName`, `desc`, `unitPrice`, `supplierID`) VALUES (?, ?, ?, ?)";
+    dbCon.query(query, [pName, pDesc, pPrice, pSupplier], function(err, result, fields) {
+        if (err && err.code === 'ER_DUP_ENTRY') {
+            console.log(err);
+            resMsg.code = 409;
+            resMsg.headers = {"Content-Type": 'application/json'};
+            resMsg.body = JSON.stringify({ message: 'Item already exists' });
+
+            res.writeHead(resMsg.code, resMsg.headers),
+            res.end(resMsg.body);
+            return;
+        }
+        else if (err) {
+            console.log(err);
+            throw err;
+        }
+        
+        resMsg.code = 201;
+        resMsg.headers = {"Content-Type": 'application/json'};
+        resMsg.body = JSON.stringify({ accountId: result.insertId });
+        
+        res.writeHead(resMsg.code, resMsg.headers),
+        res.end(resMsg.body);
+    });      
 };
 
 var review = function(req, res, urlparts) {
@@ -104,7 +134,6 @@ var requests = function(req, res, urlparts) {
 var sales = function(req, res, urlparts) {
     //Create sales report table if not already exists with mySQL:
     if(urlparts[urlparts.length-1].split("?").indexOf("nogen") == -1){
-        console.log("Requested sales reports with yes generation.");
         //YES, DO GENERATE NEW SALES REPORT IN THIS CONDITION
 
         //Get highest reportID value in the table and continue from there:
@@ -147,8 +176,8 @@ var createAccount = function(req, res, urlparts) {
     var email = post.email;
     var password = post.password;
 
-    var query = "INSERT INTO `Accounts` (`UserName`, `Email`, `Password`) VALUES (?, ?, ?)";
-    dbCon.query(query, [username, email, password], function(err, result, fields) {
+    var query = "INSERT INTO `Accounts` (`UserName`, `Email`, `Password`, `Role`) VALUES (?, ?, ?, ?)";
+    dbCon.query(query, [username, email, password, "user"], function(err, result, fields) {
         if (err && err.code === 'ER_DUP_ENTRY') {
             console.log(err);
             resMsg.code = 409;
@@ -199,6 +228,7 @@ var authenticate = function(req, res, urlparts){
         res.cookie("jwt", token, {secure: false, httpOnly: true});
         res.cookie("userID", result[0].userID, {secure: false, httpOnly: false});
         res.cookie("username", result[0].UserName, {secure: false, httpOnly: false});
+        res.cookie("userRank", result[0].Role, {secure: false, httpOnly: true});
         res.send()
         //res.end(JSON.stringify({ token: token }));
     });
@@ -211,11 +241,8 @@ var accountInfo = function(req, res, urlparts) {
       // Select the row where UserID equals the ID of the authenticated user
       var query = `SELECT * FROM Accounts WHERE UserID = ${req.user.userID}`;
 
-      console.log("doing sql next");
-
       dbCon.query(query, function (err, result, fields) {
         if (err) throw err;
-        console.log("result is: ", result[0]);
 
         // If the user does not have permission to view the requested account, return error response
         if (result.length === 0 || result[0].userID !== parseInt(accountId)) {
@@ -318,35 +345,79 @@ var deleteAccount = function(req, res, urlparts) {
     }
 }
 
+var logout = function(req, res, urlparts) {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+
+    res.clearCookie("jwt");
+    res.clearCookie("userID");
+    res.clearCookie("username");
+    res.clearCookie("userRank");
+    res.end()
+}
+
+var viewInventory = function(req, res, urlparts) {
+    const minProductID = req.url.split('/')[2];
+
+    var query = "SELECT * FROM `Inventory` WHERE `productID` >= " + minProductID + " AND `productID` < " + minProductID+50;
+    dbCon.query(query, function(err, result, fields) {
+        if(err) {
+            console.log(err);
+            res.statusCode = 400;
+            res.end();
+            return;
+        }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        console.log(result);
+        res.end(JSON.stringify(result));
+    });
+}
+
 //List of protected routes with their methods
 const protectedRoute = function(req){
-    let url = req.url;
-    if (req.method === 'GET' && req.url.startsWith('/accounts'))
-        return true;
-    if (req.method === 'PATCH' && req.url.startsWith('/accounts'))
-        return true;
-    if (req.method === 'DELETE' && req.url.startsWith('/accounts'))
-        return true;
+    //
+    // The value returned here is as follows:
+    //   0: Anyone (guest): No authentication
+    //   1: User: Must have account and be logged in
+    //   2: Employee: Must have "staff" in "Role" in Accounts DB
+    //   3: Admin: Must have "admin" in "Role" in Accounts DB
+    //
 
-    return false;
+    if (req.method === 'GET' && req.url.startsWith('/accounts'))
+        return 1;
+    if (req.method === 'PATCH' && req.url.startsWith('/accounts'))
+        return 1;
+    if (req.method === 'DELETE' && req.url.startsWith('/accounts'))
+        return 1;
+    if (req.method === 'GET' && req.url.startsWith('/userOrder'))
+        return 1;
+    if (req.method === 'GET' && req.url.startsWith('/makeOrder'))
+        return 1;
+    if (req.method === 'GET' && req.url.startsWith('/admin'))
+        return 3;
+    if (req.method === 'POST' && req.url.startsWith('/inventory'))
+        return 3;
+    if (req.method === 'GET' && req.url.startsWith('/reports'))
+        return 3;
+
+    return 0;
 }
 
 //Middleware function to authenticate token
 const authenticateToken = function(req, res, next){
-    if(!protectedRoute(req)){
+    let clearance = protectedRoute(req);
+    if(clearance == 0){
         next();            //so that when the page changes it is still stored
         return;
     }
     let token = req.cookies.jwt;
-
+    let role = req.cookies.userRank;
     if(token == null) return res.sendStatus(401);
-    console.log("We authenticating");
-
+    if(clearance == 3 && role != "admin") return res.sendStatus(401);
     jwt.verify(token, secretKey, (err, user) => {
-        console.log(err);
-
-        if(err) return res.sendStatus(403); 
-        req.user = user;
+        if(err) console.log(err);
+        if(err) return res.sendStatus(403);
         next();
     });
 }
@@ -361,12 +432,31 @@ const setupSqlDatabase = function() {
         `FirstName` text,\
         `LastName` text,\
         `Birthday` date,\
-        `Role` char(1),\
+        `Role` text,\
         `CreditCard` bigint(16),\
         `SecurityCode` int(3),\
         `ExpirationDate` date\
       ) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
 
+    //Generate admin-level and staff-level accounts
+    dbCon.query("INSERT INTO `Accounts` (`UserName`, `Email`, `Password`, `Role`) VALUES (?, ?, ?, ?)", ["admin", "admin@email.com", "password", "admin"], function(err, result){});
+    dbCon.query("INSERT INTO `Accounts` (`UserName`, `Email`, `Password`, `Role`) VALUES (?, ?, ?, ?)", ["staff", "staff@email.com", "password", "staff"], function(err, result){});
+
+    dbCon.query("CREATE TABLE if not exists `Inventory` (\
+    `productID` INT(8) NOT NULL UNIQUE AUTO_INCREMENT,\
+    `productName` varchar(30) UNIQUE NOT NULL,\
+    `desc` varchar(100) UNIQUE NOT NULL,\
+    `unitPrice` DECIMAL(15,2) NOT NULL,\
+    `onHand` INT(4),\
+    `category` VARCHAR(20),\
+    `size` VARCHAR(12),\
+    `weight` INT(3),\
+    `image` VARCHAR(100),\
+    `fragility` int(1),\
+    `supplierID` INT(8) NOT NULL,\
+    `rating` INT(5),\
+    PRIMARY KEY (ProductID)\
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
       
     compactSqlQuery("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
     "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
@@ -391,13 +481,13 @@ const router = function(req, res){
             done = true;
         }
 
-        if(done === false && req.url.startsWith("/accounts")){
-            resMsg = accountInfo(req, res, urlparts);
+        if(done === false && /\/accounts\/logout/.test(req.url)){
+            resMsg = logout(req, res, urlparts);
             done = true;
         }
 
-        if(done === false && /\/inventory/.test(req.url)){
-            resMsg = inventory(req, res, urlparts);
+        if(done === false && req.url.startsWith("/accounts")){
+            resMsg = accountInfo(req, res, urlparts);
             done = true;
         }
     
@@ -430,9 +520,19 @@ const router = function(req, res){
             resMsg = sales(req, res, urlparts);
             done = true;
         }
+
+        if(done === false && /\/inventory/.test(req.url)){
+            resMsg = viewInventory(req, res, urlparts);
+            done = true;
+        }
     }else if(req.method == "POST"){
         if(done === false && /\/accounts\/login/.test(req.url)){
             authenticate(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/inventory/.test(req.url)){
+            resMsg = addItem(req, res, urlparts);
             done = true;
         }
 
@@ -458,7 +558,6 @@ const router = function(req, res){
     }
 
     if(done && JSON.stringify(resMsg) != JSON.stringify({}) && resMsg != null && resMsg != undefined){
-        console.log(resMsg);
         res.writeHead(resMsg.code, resMsg.headers),
         res.end(resMsg.body);
     }
@@ -477,145 +576,11 @@ const router = function(req, res){
                 .catch(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
             }
         }else {
-            console.log("forcing 404 for ", req.url);
             fs.access(__dirname + "/pages" + req.url + ".html", fsc.F_OK)
             .then(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
         }
     }
 }
-
-/*
-//This requestHandler is currently built to respond to expected HTTP requests. Some unexpected http requests (i.e. requests
-//for which no function is defined above) may also have responses in the form of HTML pages (like "/about").
-const requestHandlerHTML = function(req, res){
-    //Split up the received uri
-    let urlparts = [];
-    let segments = req.url.split("/");
-    for(i = 0, ct=segments.length; i<ct; i++){
-        if(segments[i] != ""){
-            urlparts.push(segments[i]);
-        }
-    }
-
-    //Figure out what the topmost url path is for the request and redirect to the appropriate function above. Uses regexps.
-    //Since each function takes urlparts, just in case the server determines the wrong one should be called, we'll try-catch each:
-    let done = false;
-    let resMsg = {};
-
-    try{
-        if(done === false && /\/dbStatus/.test(req.url)){
-            resMsg = dbstatus(req, res, urlparts);
-            done = true;
-        }
-
-        if(done === false && /\/accounts/.test(req.url)){
-            //resMsg = accounts(req, res, urlparts);
-            //done = true;
-        }
-
-        if(done === false && /\/inventory/.test(req.url)){
-            resMsg = inventory(req, res, urlparts);
-            done = true;
-        }
-    
-        if(done === false && /\/search/.test(req.url)){
-            resMsg = search(req, res, urlparts);
-            done = true;
-        }
-    
-        if(done === false && /\/review/.test(req.url)){
-            resMsg = review(req, res, urlparts);
-            done = true;
-        }
-    
-        if(done === false && /\/productName/.test(req.url)){
-            resMsg = productName(req, res, urlparts);
-            done = true;
-        }
-    
-        if(done === false && /\/category/.test(req.url)){
-            resMsg = category(req, res, urlparts);
-            done = true;
-        }
-    
-        if(done === false && /\/makeorder/.test(req.url)){
-            resMsg = orders(req, res, urlparts);
-            done = true;
-        }
-    
-        if(done === false && /\/requests/.test(req.url)){
-            resMsg = requests(req, res, urlparts);
-            done = true;
-        }
-    
-        if(done === false && /\/sales/.test(req.url)){
-            resMsg = sales(req, res, urlparts);
-            done = true;
-        }
-    }catch(exc){
-        console.log("Uh oh! Something's wrong in the request routing for ", req.url, " ", req.method, " | Error: ", exc);
-    };
-
-    if(done){
-        res.writeHead(resMsg.code, resMsg.headers),
-        res.end(resMsg.body);
-    }
-
-    //Load different html files (separate pages) based on the url, assuming GET request
-    //Currently set up such that a URL will autodirect to its same-named html file on the server.
-    //Unknown URLs will redirect to 404.
-    if(req.method == "GET" && done === false){
-        var dataRequest = false; //For when something other than an html page is requested.
-                                 //This may need to be determined from another list like the pages array
-
-        res.writeHead(200, {'Content-Type': 'text/html'});
-
-        res.write(req.url);
-        if(req.url == "/")
-            fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
-        else {
-            //We use .then() and .catch() b/c fs.promises is async.
-            fs.access(__dirname + "/pages" + req.url + ".html", fsc.F_OK)
-            .then(() => fs.readFile(__dirname + "/pages" + req.url + ".html").then(contents => res.end(contents)))
-            .catch(() => fs.readFile(__dirname + "/pages/404.html").then(contents => res.end(contents)));
-        }
-        
-    }
-
-    /*
-    //A search bar that takes a keyword input and searches between products to find a match.
-    //Outputs an error message for 0 results
-    const searchBar = document.getElementById("search-bar");
-    const form = document.querySelector("form");
-    const searchResults = document.getElementById("search-results");
-
-    form.addEventListener("submit", (event) => {
-        event.preventDefault(); // prevent form submission
-
-        const searchTerm = newFunction_1(searchBar);
-
-        if (searchTerm.trim()) {
-            const searchQuery = newFunction(searchTerm);
-            newFunction_3(searchQuery)
-                .then((response) => response.json())
-                .then((data) => {
-                    // display the search results
-                    if (data.length > 0) {
-                        searchResults.innerHTML = "";
-                        data.forEach((result) => {
-                            const item = document.createElement("div");
-                            item.textContent = result;
-                            searchResults.appendChild(item);
-                        });
-                    } else {
-                        searchResults.innerHTML = "No results found.";
-                    }
-                })
-                .catch((error) => console.error(error));
-        }
-    });
-
-}*/
 
 //setting up mySQL database, still needs work
 //from lec8 REST server example slides

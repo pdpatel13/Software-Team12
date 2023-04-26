@@ -6,7 +6,7 @@ table, th, td {
 }
 </style>
 </head>
-<body>
+<body onload="newPage()">
   <a href="/">Home</a>
   <a href="/about">About</a>
   <a href="/404">404 Demo</a>
@@ -15,6 +15,11 @@ table, th, td {
   <a href="/products">Products</a>
   <a href="/admin">Admin</a>
   <a href="/userorder">Make a (Manual) Order!</a>
+
+  <label for="Page">Page: </label>
+  <input type="text" id="pageInput" name="page">
+  <button onclick="newPage()">Go!</button>
+
 <table>
   <thead>
     <tr>
@@ -24,62 +29,56 @@ table, th, td {
       <th>Category</th>
     </tr>
   </thead>
-  <tbody>
-    <tr>
-      <td>Product A</td>
-      <td>Description A</td>
-      <td>$10.00</td>
-      <td>Category 1</td>
-    </tr>
-    <tr>
-      <td>Product B</td>
-      <td>Description B</td>
-      <td>$15.00</td>
-      <td>Category 2</td>
-    </tr>
-    <tr>
-      <td>Product C</td>
-      <td>Description C</td>
-      <td>$20.00</td>
-      <td>Category 1</td>
-    </tr>
-    <tr>
-      <td>Product A</td>
-      <td>Description A</td>
-      <td>$10.00</td>
-      <td>Category 1</td>
-    </tr>
-    <tr>
-      <td>Product B</td>
-      <td>Description B</td>
-      <td>$15.00</td>
-      <td>Category 2</td>
-    </tr>
-    <tr>
-      <td>Product C</td>
-      <td>Description C</td>
-      <td>$20.00</td>
-      <td>Category 1</td>
-    </tr>
-    <tr>
-      <td>Product A</td>
-      <td>Description A</td>
-      <td>$10.00</td>
-      <td>Category 1</td>
-    </tr>
-    <tr>
-      <td>Product B</td>
-      <td>Description B</td>
-      <td>$15.00</td>
-      <td>Category 2</td>
-    </tr>
-    <tr>
-      <td>Product C</td>
-      <td>Description C</td>
-      <td>$20.00</td>
-      <td>Category 1</td>
+  <tbody id="display_body1">
+    <tr hidden id="tr_template">
+      <td class="product_name"></td>
+      <td class="product_desc"></td>
+      <td class="product_price"></td>
+      <td class="product_category"></td>
     </tr>
   </tbody>
 </table>
+
+<script>
+  var newPage = function(){
+    let pageNum = document.getElementById("pageInput").value;
+    if(isNaN(pageNum) || pageNum == "")
+      pageNum = 1;
+
+    let urlparts = [];
+    let segments = window.location.href.split("/");
+    for(i = 0, ct=segments.length; i<ct; i++){
+        if(segments[i] != ""){
+            urlparts.push(segments[i]);
+        }
+    }
+
+    let baseURL = urlparts[0] + "//" + urlparts[1];
+    fetch( baseURL + "/inventory/" + pageNum, 
+    {
+        method: "GET", 
+        headers: 
+            {
+                'Accept': "application/json"
+            }
+    }).then(r =>  {
+        if(r.status == 200){
+          r.json().then(data => {
+            console.log(data);
+              for(let i = 0; i < data.length; i++){
+                document.getElementById("display_body1").insertAdjacentHTML("beforeend", 
+                "<td> " + data[i].productName + "</td>\
+                 <td> " + data[i].desc + "</td>\
+                 <td> " + data[i].unitPrice + "</td>\
+                 <td> " + data[i].category + "</td");
+              }
+            });
+        }
+    }).catch(error => {
+        console.log(error);
+    });
+
+  }
+</script>
 
 </body>
