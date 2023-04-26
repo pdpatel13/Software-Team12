@@ -16,15 +16,25 @@
     <fieldset>
       <p>Modify a product:</p>
       <br>
-      <label for="modify-product-name">Name:</label>
-      <input type="text" id="modify-product-name" name="modify-product-name" placeholder="Product name to modify"><br><br>
-      <label for="new-product-name">New Name:</label>
-      <input type="text" id="new-product-name" name="new-product-name" placeholder="New product name (optional)"><br><br>
-      <label for="new-product-price">New Price:</label>
-      <input type="text" id="new-product-price" name="new-product-price" placeholder="New product price (optional)"><br><br>
+      <label for="product-name">Name:</label>
+      <input type="text" id="product-name" name="product-name"><br><br>
+      <label for="product-price">Price:</label>
+      <input type="text" id="product-price" name="product-price"><br><br>
+      <label for="amount">Amount:</label>
+      <input type="number" id="amount" name="amount"><br><br>
+      <label for="product-description">Description:</label>
+      <textarea id="product-description" name="product-description"></textarea><br><br>
+      <label for="category">Category:</label>
+      <input type="text" id="category" name="category"><br><br>
+      <label for="size">Size:</label>
+      <input type="text" id="size" name="size"><br><br>
+      <label for="weight">Weight:</label>
+      <input type="text" id="weight" name="weight"><br><br>
+      <label for="supplier-id">Supplier ID</label>
+      <textarea id="supplier-id" name="supplier-id"></textarea><br><br>
       <button onclick="modifyButtonFunc()">Modify Product</button>
       <br><br><br>
-      <p id="modifyServerOutput"></p>
+      <p id="ServerOutput"></p>
     </fieldset>
     
     <script>
@@ -39,30 +49,36 @@
     
         let baseURL = urlparts[0] + "//" + urlparts[1];
     
-        var modifyProductName = document.getElementById("modify-product-name").value;
-        var newProductName = document.getElementById("new-product-name").value;
-        var newProductPrice = document.getElementById("new-product-price").value;
+        var pName = document.getElementById("product-name").value;
+        var pPrice = document.getElementById("product-price").value;
+        var pDesc = document.getElementById("product-description").value;
+        var pSupplier = document.getElementById("supplier-id").value;
+        var pAmount = document.getElementById("amount").value;
+        var pSize = document.getElementById("size").value;
+        var pWeight = document.getElementById("weight").value;
+        var pCategory = document.getElementById("category").value;
     
-        if (modifyProductName === "") {
-          document.getElementById("modifyServerOutput").innerHTML = "ERROR: Invalid value for Product Name";
-          return;
-        }
-    
-        fetch(baseURL + "/admin/modify" + encodeURIComponent(modifyProductName), {
+        fetch(baseURL + "/admin", {
           method: "PATCH",
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            newName: newProductName,
-            newPrice: newProductPrice
+            name: pName,
+            desc: pDesc,
+            price: pPrice,
+            supplier: pSupplier,
+            amount: pAmount,
+            size: pSize,
+            weight: pWeight,
+            category: pCategory
           })
         }).then(r => {
           if (r.status === 404) {
-            document.getElementById("modifyServerOutput").innerHTML = "ERROR: Product not found";
+            document.getElementById("ServerOutput").innerHTML = "ERROR: Product not found";
           } else if (r.status === 200) {
-            document.getElementById("modifyServerOutput").innerHTML = "Item modified successfully!";
+            document.getElementById("ServerOutput").innerHTML = "Item modified successfully!";
           }
         }).catch(error => {
           console.log(error);

@@ -121,6 +121,84 @@ var deleteItem = function(req, res, urlparts) {
     });
   };
   
+  var modifyItem = function(req, res, urlparts) {
+    let resMsg = {};
+
+    var post = req.body;
+    console.log(post);
+    var pName = post.name;
+    var pDesc = post.desc;
+    var pPrice = post.price;
+    var pSupplier = post.supplier;
+    var pAmount = post.amount;
+    var pSize = post.size;
+    var pWeight = post.weight;
+    var pCategory = post.category;
+
+    var query = "UPDATE `Inventory` SET ";
+    var queryParams = [];
+    var updateFields = [];
+
+    if (pDesc) {
+        updateFields.push("`desc` = ?");
+        queryParams.push(pDesc);
+    }
+
+    if (pPrice) {
+        updateFields.push("`unitPrice` = ?");
+        queryParams.push(pPrice);
+    }
+
+    if (pSupplier) {
+        updateFields.push("`supplierID` = ?");
+        queryParams.push(pSupplier);
+    }
+
+    if (pAmount) {
+        updateFields.push("`onHand` = ?");
+        queryParams.push(pAmount);
+    }
+
+    if (pSize) {
+        updateFields.push("`size` = ?");
+        queryParams.push(pSize);
+    }
+
+    if (pWeight) {
+        updateFields.push("`weight` = ?");
+        queryParams.push(pWeight);
+    }
+    
+    if (pCategory) {
+        updateFields.push("`category` = ?");
+        queryParams.push(pCategory);
+    }
+
+    query += updateFields.join(", ") + " WHERE `productName` = ?";
+    queryParams.push(pName);
+    console.log(query);
+    console.log(queryParams);
+    dbCon.query(query, queryParams, function(err, result, fields) {
+        if (err) {
+            console.log(err);
+            throw err;
+        }
+
+        if (result.affectedRows === 0) {
+            resMsg.code = 404;
+            resMsg.headers = {"Content-Type": 'application/json'};
+            resMsg.body = JSON.stringify({ message: 'Product not found' });
+        } else {
+            resMsg.code = 200;
+            resMsg.headers = {"Content-Type": 'application/json'};
+            resMsg.body = JSON.stringify({ message: 'Item modified successfully!' });
+        }
+
+        res.writeHead(resMsg.code, resMsg.headers),
+        res.end(resMsg.body);
+    });
+};
+
 
 var review = function(req, res, urlparts) {
     let resMsg = {};
@@ -679,17 +757,24 @@ const router = function(req, res){
             done = true;
         }
     }else if(req.method == "PATCH"){
+        console.log(req.url);
         if(done === false && req.url.startsWith("/accounts/")){
             resMsg = updateAccount(req, res, urlparts);
             done = true;
         }
+
+        if(done === false && req.url.startsWith("/admin")){
+            resMsg = modifyItem(req, res, urlparts);
+            done = true;
+        }
     }else if(req.method == "DELETE"){
+
         if(done === false && req.url.startsWith("/accounts/")){
             resMsg = deleteAccount(req, res, urlparts);
             done = true;
         }
 
-        if(done === false && req.url.startsWith("/admin/delete/")){
+        if(done === false && req.url.startsWith("/admin")){
             resMsg = deleteItem(req, res, urlparts);
             done = true;
         }
