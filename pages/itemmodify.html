@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <p id="delete-products-form"></p>
+    <title>Admin</title>
+  </head>
+  <body>
+    <h1>Bestest Buy Website Admin</h1>
+    <a href="/">Home</a>
+    <a href="/admin">Admin</a>
+    <a href="itemadd">Add Product</a>
+    <a href="/itemdelete">Remove Product</a>
+    <a href="/products">Browse Products</a>
+    
+    <h2>Product Management</h2>
+    <fieldset>
+      <p>Modify a product:</p>
+      <br>
+      <label for="modify-product-name">Name:</label>
+      <input type="text" id="modify-product-name" name="modify-product-name" placeholder="Product name to modify"><br><br>
+      <label for="new-product-name">New Name:</label>
+      <input type="text" id="new-product-name" name="new-product-name" placeholder="New product name (optional)"><br><br>
+      <label for="new-product-price">New Price:</label>
+      <input type="text" id="new-product-price" name="new-product-price" placeholder="New product price (optional)"><br><br>
+      <button onclick="modifyButtonFunc()">Modify Product</button>
+      <br><br><br>
+      <p id="modifyServerOutput"></p>
+    </fieldset>
+    
+    <script>
+      var modifyButtonFunc = function() {
+        let urlparts = [];
+        let segments = window.location.href.split("/");
+        for(i = 0, ct = segments.length; i < ct; i++){
+          if(segments[i] != ""){
+            urlparts.push(segments[i]);
+          }
+        }
+    
+        let baseURL = urlparts[0] + "//" + urlparts[1];
+    
+        var modifyProductName = document.getElementById("modify-product-name").value;
+        var newProductName = document.getElementById("new-product-name").value;
+        var newProductPrice = document.getElementById("new-product-price").value;
+    
+        if (modifyProductName === "") {
+          document.getElementById("modifyServerOutput").innerHTML = "ERROR: Invalid value for Product Name";
+          return;
+        }
+    
+        fetch(baseURL + "/admin/modify" + encodeURIComponent(modifyProductName), {
+          method: "PATCH",
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            newName: newProductName,
+            newPrice: newProductPrice
+          })
+        }).then(r => {
+          if (r.status === 404) {
+            document.getElementById("modifyServerOutput").innerHTML = "ERROR: Product not found";
+          } else if (r.status === 200) {
+            document.getElementById("modifyServerOutput").innerHTML = "Item modified successfully!";
+          }
+        }).catch(error => {
+          console.log(error);
+        });
+      };
+    </script>         
+  </body>
+</html>

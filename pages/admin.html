@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <p id="add-products-form"></p>
     <title>Admin</title>
   </head>
   <body>
@@ -12,80 +11,10 @@
     <a href="/products">Browse Products</a>
     <a href="/admin">Admin</a>
     
+    
     <h2>Product Management</h2>
-    <fieldset>
-      <p>Add a new product:</p>
-      <br>
-      <label for="product-name">Name:</label>
-      <input type="text" id="product-name" name="product-name"><br><br>
-      <label for="product-price">Price:</label>
-      <input type="text" id="product-price" name="product-price"><br><br>
-      <label for="product-description">Description:</label>
-      <textarea id="product-description" name="product-description"></textarea><br><br>
-      <label for="supplier-id">Supplier ID</label>
-      <textarea id="supplier-id" name="supplier-id"></textarea><br><br>
-      <button onclick="buttonFunc()">Add Product</button>
-      <br><br><br>
-      <p id="serverOutput"></p>
-    </fieldset>
-    </table>
-
-    <script>
-      var buttonFunc = function() {
-        let urlparts = [];
-        let segments = window.location.href.split("/");
-        for(i = 0, ct=segments.length; i<ct; i++){
-            if(segments[i] != ""){
-                urlparts.push(segments[i]);
-            }
-        }
-
-        let baseURL = urlparts[0] + "//" + urlparts[1];
-
-        var pName = document.getElementById("product-name").value;
-        var pPrice = document.getElementById("product-price").value;
-        var pDesc = document.getElementById("product-description").value;
-        var pSupplier = document.getElementById("supplier-id").value;
-
-        if(pSupplier.length > 8)
-          pSupplier = pSupplier.substring(0, 8);
-
-        if(pName == ""){
-          document.getElementById("serverOutput").innerHTML = "ERROR: Invalid value for Product Name";
-          return;
-        }else if(isNaN(pPrice)){
-          document.getElementById("serverOutput").innerHTML = "ERROR: Invalid value for Product Price";
-          return;
-        }else if(isNaN(pSupplier)){
-          document.getElementById("serverOutput").innerHTML = "ERROR: Invalid value for Product Supplier";
-          return;
-        }
-        fetch( baseURL + "/inventory", 
-                  {
-                      method: "POST", 
-                      headers: 
-                          {
-                              'Accept': 'application/json',
-                              'Content-Type': "application/json"
-                          },
-                      body: JSON.stringify(
-                          {
-                              name: pName,
-                              desc: pDesc,
-                              price: pPrice,
-                              supplier: pSupplier
-                          }
-                      )
-                  }).then(r =>  {
-                      if(r.status == 409){
-                          document.getElementById("serverOutput").innerHTML = "ERROR: This item already exists"
-                      }else if (r.status === 200){
-                          document.getElementById("serverOutput").innerHTML = "Item added successfully!";
-                      }
-                  }).catch(error => {
-                      console.log(error);
-                  });
-              };
-    </script>
+    <a href="/itemdelete">Remove Product</a>
+    <a href="/itemadd">Add Product</a>
+    <a href="/itemmodify">Modify Product</a>
   </body>
 </html>

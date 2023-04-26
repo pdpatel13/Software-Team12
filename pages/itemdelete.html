@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <p id="delete-products-form"></p>
+    <title>Admin</title>
+  </head>
+  <body>
+    <h1>Bestest Buy Website Admin</h1>
+    <a href="/">Home</a>
+    <a href="/admin">Admin</a>
+    <a href="itemadd">Add Product</a>
+    <a href="/itemmodify">Modify Product</a>
+    <a href="/products">Browse Products</a>
+    
+    <h2>Product Management</h2>
+    <fieldset>
+        <p>Delete a product:</p>
+        <br>
+        <label for="product-name">Name:</label>
+        <input type="text" id="product-name" name="product-name"><br><br>
+        <button onclick="deleteButtonFunc()">Delete Product</button>
+        <br><br><br>
+        <p id="ServerOutput"></p>
+      </fieldset>
+      
+      <script>
+        var deleteButtonFunc = function() {
+          let urlparts = [];
+          let segments = window.location.href.split("/");
+          for(i = 0, ct = segments.length; i < ct; i++){
+            if(segments[i] != ""){
+              urlparts.push(segments[i]);
+            }
+          }
+      
+          let baseURL = urlparts[0] + "//" + urlparts[1];
+      
+          var pName = document.getElementById("product-name").value;
+          if (pName === "") {
+            document.getElementById("ServerOutput").innerHTML = "ERROR: Invalid value for Product Name";
+            return;
+          }
+      
+          fetch(baseURL + "/admin/delete" + encodeURIComponent(deleteProductName),
+          {
+            method: "DELETE",
+            headers:
+                {
+                    'Accept': 'application/json',
+                    'Content-Type': "application/json"
+                },
+            body: JSON.stringify(
+                {
+                    name: pName
+                }
+            )
+          }).then(r => {
+            if (r.status === 404) {
+              document.getElementById("ServerOutput").innerHTML = "ERROR: Product not found";
+            } else if (r.status === 204) {
+              document.getElementById("ServerOutput").innerHTML = "Item deleted successfully!";
+            }
+          }).catch(error => {
+            console.log(error);
+          });
+        };
+      </script>      
+  </body>
+</html>
