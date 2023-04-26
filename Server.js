@@ -188,8 +188,26 @@ var requests = function(req, res, urlparts) {
     return resMsg;
 }
 
+var viewReport = function(req,res,urlparts) {
+    let resMsg = {};
+    dbCon.query("SELECT * FROM REPORT WHERE ReportId = " + req.body, function(err, result){
+        if(err){
+            resMsg.code = 400;
+            resMsg.headers = {"Content-Type" : "application/json"};
+            resMsg.body = "Error: " + err;
+        }else {
+            resMsg.code = 200;
+            resMsg.headers = {"Content-Type" : "application/json"};
+            resMsg.body = JSON.stringify(result);
+        }
+
+        res.writeHead(resMsg.code, resMsg.headers);
+        res.end(resMsg.body);
+    });
+}
 
 var sales = function(req, res, urlparts) {
+    let resMsg = {};
     //Create sales report table if not already exists with mySQL:
     if(urlparts[urlparts.length-1].split("?").indexOf("nogen") == -1){
         //YES, DO GENERATE NEW SALES REPORT IN THIS CONDITION
@@ -205,22 +223,73 @@ var sales = function(req, res, urlparts) {
             }else {
                 newRepID = result[0]['MAX(ReportID)'] + 1;
             }
-            //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
-            compactSqlQuery("INSERT INTO REPORT(ReportID, ReportTime) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\')", false);
+            //Get all sales from time of last report to now
+            dbCon.query("SELECT * FROM REPORT WHERE `ReportID` = " + result[0]['MAX(ReportID)'], function (err, latestRep) {
+                let ordersSince = new Date(latestRep[0]['ReportTime']);
+                fdb.get(fdb.child(fdb.ref(fireDB), 'orders/newestOrderId')).then(snapshot => {
+                    if(snapshot.exists()){
+                        let latestOrderID = snapshot.val();
+                        var orderMetadatas = {};
+                        let done = false;
+                        for(let counter = Number(latestOrderID); counter > 0; counter--){
+                            fdb.get(fdb.child(fdb.ref(fireDB), 'orders/ordermetadata/'+counter)).then(snapshot => {
+                                if(snapshot.exists()){
+                                    if(new Date(snapshot.val()["timestamp"]) > ordersSince){
+                                        console.log("counter: ", counter);
+                                        orderMetadatas[""+counter]= snapshot.val();
+                                    }else if(done == false) {
+                                        done = true;
+                                        let totalQtyOrdered = 0;
+                                        let totalIncome = 0;
+                                        let ordersSince = 0;
+                                        Object.keys(orderMetadatas).forEach(key=>{
+                                            ordersSince++;
+                                            totalQtyOrdered = totalQtyOrdered + orderMetadatas[key].size;
+                                            totalIncome = totalIncome + orderMetadatas[key].cost;
+                                        })
+
+                                        //This is nested inside of the first dbQuery so that newRepID definitely has it's final value before it runs.
+                                        compactSqlQuery("INSERT INTO REPORT(ReportID, ReportTime, IncomeSinceLastReport, OrdersSinceLastReport, CurrentInventorySize) VALUES (" + newRepID + ", \'" + new Date().toISOString().slice(0, 19).replace('T', ' ') + "\', "+totalIncome + " , " + ordersSince + " , " + totalQtyOrdered + ")", false, function(result){
+                                            dbCon.query("SELECT ReportID, ReportTime FROM REPORT", function(err, result){ 
+                                                if(err) {
+                                                    resMsg.code = 400;
+                                                    resMsg.headers = {"Content-Type" : "application/json"};
+                                                    resMsg.body = "Error1: " + err;
+                                                }else {
+                                                    resMsg.code = 200;
+                                                    resMsg.headers = {"Content-Type" : "application/json"};
+                                                    resMsg.body = JSON.stringify(result);
+                                                }
+                                                res.writeHead(resMsg.code, resMsg.headers);
+                                                res.end(resMsg.body);
+                                            });
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    else
+                        console.log("snapshot does not exist");
+                });
+            });
+            
         });   
+    }else {
+        dbCon.query("SELECT ReportID, ReportTime FROM REPORT", function(err, result){ 
+            if(err) {
+                resMsg.code = 400;
+                resMsg.headers = {"Content-Type" : "application/json"};
+                resMsg.body = "Error1: " + err;
+            }else {
+                resMsg.code = 200;
+                resMsg.headers = {"Content-Type" : "application/json"};
+                resMsg.body = JSON.stringify(result);
+            }
+            res.writeHead(resMsg.code, resMsg.headers);
+            res.end(resMsg.body);
+        });
     }
-
-    //Either way, request all the reports and send them to client
-    compactSqlQuery("SELECT * FROM REPORT", false, function (result) {
-        //TODO: Send info to HTML on client.
-    });
-
-
-    let resMsg = {};
-    resMsg.code = 200;
-    resMsg.headers = {"Content-Type" : "text/plain"};
-    resMsg.body = "Temporary filler text";
-    return resMsg;
 }
 
 const jwt = require('jsonwebtoken');
@@ -586,6 +655,10 @@ const router = function(req, res){
             done = true;
         }
     }else if(req.method == "POST"){
+        if(done === false && /\/;/.test(req.url)){
+            viewReport(req, res, urlparts);
+            done = true;
+        }
         if(done === false && /\/accounts\/login/.test(req.url)){
             authenticate(req, res, urlparts);
             done = true;

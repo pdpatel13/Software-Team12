@@ -18,8 +18,43 @@
             can locate it -->
         <button onclick="genReports()">Generate Sales Report</button>
         <button onclick="refReports()">Refresh Reports</button>
-        <p id="repStatus"></p>
+        <table>
+            <p>List of Reports:</p>
+            <thead>
+              <tr>
+                <th>ReportID</th>
+                <th>ReportTime</th>
+                <th>View</th>
+              </tr>
+            </thead>
+            <tbody id="display_body2">
+              <tr hidden id="tr_template">
+                <td class="product_name"></td>
+                <td class="product_desc"></td>
+                <td class="product_price"></td>
+              </tr>
+            </tbody>
+          </table>
 
+          <table>
+            <p>Report Query:</p>
+            <thead>
+              <tr>
+                <th>ReportID</th>
+                <th>ReportTime</th>
+                <th>Orders Placed</th>
+                <th>Income</th>
+                <th>Qty Sold</th>
+              </tr>
+            </thead>
+            <tbody id="display_body1">
+              <tr hidden id="tr_template">
+                <td class="product_name"></td>
+                <td class="product_desc"></td>
+                <td class="product_price"></td>
+              </tr>
+            </tbody>
+          </table>
         <!-- window.location.href gets current URL in browser, this is template for updating element in page
             with a response from the server, as opposed to the server completely overwriting the currently loaded
             page/response -->
@@ -33,13 +68,9 @@
                         "Content-Type": "text/json"
                     }
                 };
-                fetch( window.location.href + "/sales", reqGenHTTP).then(
-                    response => {
-                        response.text().then(text => {
-                            document.getElementById("repStatus").textContent = text;
-                        })
-                    }
-                );
+                fetch( window.location.href + "/sales", reqGenHTTP);
+
+                refReports();
             };
 
             let reqRefreshHTTP = {
@@ -49,11 +80,55 @@
                 }
             };
 
+            var viewReport = function(reportID){
+                console.log("requesting report " + reportID);
+                document.getElementById("display_body2").hidden = true;
+                document.getElementById("display_body1").hidden = false;
+
+                let req = {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: reportID
+                };
+
+                let urlparts = [];
+                let segments = window.location.href.split("/");
+                for(i = 0, ct=segments.length; i<ct; i++){
+                    if(segments[i] != ""){
+                        urlparts.push(segments[i]);
+                    }
+                }
+
+                let baseURL = urlparts[0] + "//" + urlparts[1];
+
+                fetch(baseURL+"/viewReport/"+reportID, req).then(result => {
+                    result.json().then(data => {
+                        document.getElementById("display_body2").insertAdjacentHTML("beforeend", 
+                            "<td> " + data[key].ReportID + "</td>\
+                             <td> " + data[key].ReportTime + "</td>\
+                             <td> " + data[key].OrdersSinceLastReport + "</td>\
+                             <td> " + data[key].IncomeSinceLastReport + "</td>\
+                             <td> " + data[key].CurrentInventorySize + "</td>");
+                    });
+                });
+            }
+
             var refReports = function(){
+                document.getElementById("display_body2").hidden = false;
+                document.getElementById("display_body1").hidden = true;
                 fetch( window.location.href + "/sales?nogen", reqRefreshHTTP).then(
                     response => {
-                        response.text().then(text => {
-                            document.getElementById("demo").textContent = text;
+                        response.json().then(data => {
+                            Object.keys(data).forEach(key=>{
+                                document.getElementById("display_body2").insertAdjacentHTML("beforeend", 
+                            "<td> " + data[key].ReportID + "</td>\
+                             <td> " + data[key].ReportTime + "</td>\
+                             <td> <button class=\"viewReportButton" + data[key].reportID + "\">View Report</button></td>");
+                             
+                             document.getElementsByClassName("viewReportButton" + data[key].reportID)[0].onclick = viewReport.bind(null, data[key].reportID);
+                            })
                         })
                     }
                 );
