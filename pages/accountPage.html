@@ -2,6 +2,7 @@
 <html>
     <head>
         <title>Bestest Buy/accounts</title>
+        <link rel="stylesheet" href="index.css">
     </head>
     
     <body>
@@ -15,6 +16,8 @@
         <button id="signInButton" onclick="buttonFunc1()">Sign In</button>
         <button id="logOutButton" onclick="buttonFunc3()">Log Out</button>
         <button id="registerButton" onclick="buttonFunc2()">Create Account</button>
+
+        <p id="ManageUser"></p>
 
         <fieldset hidden id="Signin">
             <legend>Sign in</legend>
@@ -89,6 +92,8 @@
         <br><p id="serverOutput"></p>
 
         <script>
+
+            
             //src = "./JS_sources/accounts.js"
             //src = "accounts.js"
             
@@ -101,6 +106,13 @@
             .split("; ")
             .find((row) => row.startsWith("userID="))
             ?.split("=")[1];
+
+            if(username === undefined || userID === undefined){
+                document.getElementById('ManageUser').innerHTML = "Not signed in yet :(";
+            }else {
+                document.getElementById('ManageUser').innerHTML = "Welcome back " + username + "!";
+            }
+
 
             if(username === undefined || userID === undefined){
                 document.getElementById("logOutButton").hidden = true;
@@ -145,6 +157,7 @@
                 }).then(r =>  {
                     if(r.status == 200){
                         document.getElementById("serverOutput").innerHTML = "Logged Out Sucessfully";
+                        location.reload(true);
                     }else {
                         document.getElementById("serverOutput").innerHTML = "ERROR LOGGING OUT";
                     }
@@ -191,6 +204,7 @@
                         document.getElementById("serverOutput").innerHTML = "ERROR: Invalid email or password"
                     }else if (r.status === 200){
                         document.getElementById("serverOutput").innerHTML = "You are now logged in!";
+                        location.reload(true);
                     }
                 }).catch(error => {
                     console.log(error);

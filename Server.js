@@ -7,6 +7,7 @@
 var http = require('http');
 var fs  = require('fs').promises; 
 var fsc = require('fs').constants;
+var path = require('path');
 const express = require('express');         //npm install express --save
 const querystr = require('querystring');    
 const mysql = require("mysql2");            //npm install mysql2
@@ -15,7 +16,7 @@ const fdb = require("firebase/database");  //npm install firebase
 const cookieParser = require('cookie-parser')
 
 //Demo here
-const sApiKey = "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";
+var sApiKey = "";
 
 //The following functions: accounts, inventory, review, search, productName, category, orders, requests, and sales
 //are all of the topmost domains (i.e. website.com/accounts, or website.com/inventory). These will be called when
@@ -856,7 +857,6 @@ const router = function(req, res){
         if(req.method == "GET") {
             res.writeHead(200, {'Content-Type': 'text/html'});
 
-            res.write(req.url);
             if(req.url == "/")
                 fs.readFile(__dirname + "/pages/index.html").then(contents => res.end(contents));
             else {
@@ -914,6 +914,10 @@ dbCon.connect(function(err)
     mysqlLoaded = true;
 });
 
+fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
+    sApiKey = JSON.parse(contents).key;
+});
+
 //Set up firebase for noSQL db usage
 //TODO: IF YOU HAVE NOT YET DOWNLOADED THE API KEY FILE FROM DISCORD, DO SO AND DROP IT INTO THE SAME FOLDER AS SERVER.JS. DO NOT DISTRIBUTE THAT FILE.
 // Your web app's Firebase configuration
@@ -969,7 +973,9 @@ var compactSqlQuery = function(query, log=false, handler) {
 
 
 //http.createServer(requestHandlerHTML).listen(8080);
-app.use(express.json(), cookieParser(), authenticateToken, router);
+var dir = path.join(__dirname, 'pages');
+
+app.use(express.static(dir), express.json(), cookieParser(), authenticateToken, router);
 app.listen(8080);
 
 
