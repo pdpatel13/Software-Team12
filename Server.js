@@ -1004,8 +1004,9 @@ dbCon.connect(function(err)
     mysqlLoaded = true;
 });
 
-fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
+fs.readFile(__dirname + "/sendgridAPI-DONOTUPLOAD.json").then(contents => {
     sApiKey = JSON.parse(contents).key;
+    console.log(sApiKey);
 });
 
 //Set up firebase for noSQL db usage
