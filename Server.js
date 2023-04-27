@@ -799,7 +799,33 @@ const setupSqlDatabase = function() {
     compactSqlQuery("CREATE TABLE IF NOT EXISTS REPORT (ReportID INT(7) NOT NULL UNIQUE, ReportTime DATETIME NOT NULL, " + 
     "OrdersSinceLastReport INT(8), IncomeSinceLastReport DECIMAL(15,2), CurrentInventorySize INT(10), " + 
     "ShrinkSinceLastReport INT(10), LossFromShrink DECIMAL(15,2), ReturnsSinceLastReport INT(8), ReturnPayouts DECIMAL(15,2))", false);
-}
+};
+
+var viewItems = function(req, res, urlparts){
+    var category = req.url.split('/')[2];
+    console.log(category);
+    let resMsg = {};
+    //connection.query("select * from bestestbuy.electronicsproductspricingdata where brand = 'Acer' order by productName asc limit 10", function (err, result) {
+    console.log("SELECT * FROM `Inventory` WHERE category = '" + category + "' order by productName asc limit 10");
+    dbCon.query("SELECT * FROM `Inventory` WHERE category = '" + category + "' order by productName asc limit 10", function (err, result) {
+        if (err) {
+            resMsg.code = 400;
+            resMsg.headers = {"Content-Type" : "application/json"};
+            resMsg.body = JSON.stringify({err: "bad request"});
+
+            res.writeHead(resMsg.code, resMsg.headers);
+            res.end(resMsg.body);
+        }else {
+
+        resMsg.code = 200;
+        resMsg.headers = {"Content-Type" : "application/json"};
+        resMsg.body = JSON.stringify(result);
+
+        res.writeHead(resMsg.code, resMsg.headers);
+        res.end(resMsg.body);
+        }
+    });
+};
 
 const router = function(req, res){
     //Split up the received uri
@@ -868,6 +894,12 @@ const router = function(req, res){
             resMsg = viewInventory(req, res, urlparts);
             done = true;
         }
+        
+        if(done === false && /\/viewItems/.test(req.url) && !/\/viewItems2/.test(req.url)){
+            resMsg = viewItems(req, res, urlparts);
+            done = true;
+        }
+
     }else if(req.method == "POST"){
         
         if(done === false && /\/findItemsByTrait/.test(req.url)){
@@ -904,12 +936,6 @@ const router = function(req, res){
             createAccount(req, res, urlparts);
             done = true;
         }
-
-        if(done === false && /\/viewItems/.test(req.url)){
-            resMsg = viewItems(req, res, urlparts);
-            done = true;
-        }
-
         if (done === false && /\/findItemsByTrait/.test(req.url)) {
             findItemsByTrait(req, res, urlparts);
             done = true;
