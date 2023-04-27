@@ -127,6 +127,7 @@ var deleteItem = function(req, res, urlparts) {
     let resMsg = {};
 
     var post = req.body;
+    console.log(post);
     var pName = post.name;
     var pDesc = post.desc;
     var pPrice = post.price;
@@ -177,6 +178,8 @@ var deleteItem = function(req, res, urlparts) {
 
     query += updateFields.join(", ") + " WHERE `productName` = ?";
     queryParams.push(pName);
+    console.log(query);
+    console.log(queryParams);
     dbCon.query(query, queryParams, function(err, result, fields) {
         if (err) {
             console.log(err);
@@ -443,7 +446,6 @@ var authenticate = function(req, res, urlparts){
     var post = req.body;
     var email = post.email;
     var password = post.password;
-    console.log(post);
 
     // Check if user exists and password is correct
     var query = "SELECT * FROM `Accounts` WHERE `Email` = ? AND `Password` = ?";
@@ -903,12 +905,17 @@ const router = function(req, res){
             done = true;
         }
 
-        if(done === false && /\/makeorder/.test(req.url)){
-            resMsg = orders(req, res, urlparts);
+        if(done === false && /\/viewItems/.test(req.url)){
+            resMsg = viewItems(req, res, urlparts);
+            done = true;
+        }
+
+        if (done === false && /\/findItemsByTrait/.test(req.url)) {
+            findItemsByTrait(req, res, urlparts);
             done = true;
         }
     }else if(req.method == "PATCH"){
-
+        console.log(req.url);
         if(done === false && req.url.startsWith("/accounts/")){
             resMsg = updateAccount(req, res, urlparts);
             done = true;
