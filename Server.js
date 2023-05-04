@@ -4,16 +4,58 @@
 // I moved all of these dependencies to the top so it is easy to see which
 // must be installed externally to run the server on your dev computer.
 // Those are labeled with comments with what terminal command to use to install.
-var http = require('http');
 var fs  = require('fs').promises; 
 var fsc = require('fs').constants;
 var path = require('path');
-const express = require('express');         //npm install express --save
-const querystr = require('querystring');    
-const mysql = require("mysql2");            //npm install mysql2
-const fbApp = require("firebase/app");      //npm install firebase
-const fdb = require("firebase/database");  //npm install firebase
-const cookieParser = require('cookie-parser')
+
+var express, mysql, fbApp, fdb, cookieParser, jwt, passwd
+try{
+    express = require('express'); //npm install express --save
+}catch(exc){
+    console.log("ERROR: You are missing required dependency: express.\nInstall express in terminal with \"npm install express --save\"")
+    throw exc;
+}      
+try
+{
+    mysql = require("mysql2");
+}            //npm install mysql2
+catch(exc){
+    console.log("ERROR: You are missing required dependency: mysql2.\n Install mysql2 in terminal with \"npm install mysql2\"");
+    throw exc;
+}
+try
+{
+    fbApp = require("firebase/app");      //npm install firebase
+    fdb = require("firebase/database");
+} //npm install firebase
+catch(exc) {
+    console.log("ERROR: You are missing required dependency: firebase.\n Install firebase in terminal with \"npm install firebase\"");
+    throw exc;
+}
+try
+{
+    cookieParser = require('cookie-parser')
+}
+catch(exc){
+    console.log("ERROR: You are missing required dependency: cookie-parser.\n Install cookie-parser in terminal with \"npm install cookie-parser\"");
+    throw exc;
+}
+try
+{
+    jwt = require('jsonwebtoken');
+}
+catch(exc){
+    console.log("ERROR: You are missing required dependency: jsonwebtoken.\n Install jsonwebtoken in terminal with \"npm install jsonwebtoken\"");
+    throw exc;
+}
+try
+{
+    passwd = require("./password.json")
+}
+catch(exc){
+    console.log("ERROR: The required file for SQL password called \"password.json\" is not found.")
+    throw exc;
+}
 
 //Demo here
 var sApiKey = "";
@@ -277,7 +319,7 @@ var orders = function(req, res, urlparts) {
 
     //See sampleOrdersDB.json for structure inside db
     fdb.set(fdb.ref(fireDB, "orders/ordermetadata/" + newOrderID), {
-        userid : body["userID"],
+        userid : req.cookies.userID,
         cost : totalcost,
         timestamp : timestamp,
         orderStatus : "placed",
@@ -405,7 +447,6 @@ var sales = function(req, res, urlparts) {
     }
 }
 
-const jwt = require('jsonwebtoken');
 const secretKey = "my-secret-key";
 
 var createAccount = function(req, res, urlparts) {
@@ -467,7 +508,7 @@ var authenticate = function(req, res, urlparts){
         
         res.cookie("jwt", token, {secure: false, httpOnly: true});
         res.cookie("authTime", new Date().toISOString().slice(0, 19).replace('T', ' '), {secure: false, httpOnly: true});
-        res.cookie("userID", result[0].userID, {secure: false, httpOnly: false});
+        res.cookie("userID", result[0].userID, {secure: false, httpOnly: true});
         res.cookie("username", result[0].UserName, {secure: false, httpOnly: false});
         res.cookie("userRank", result[0].Role, {secure: false, httpOnly: true});
         res.send()
@@ -691,6 +732,79 @@ const getOrders =function(req, res, urlparts) {
     });
 }
 
+const getUsersOrders = function(req, res, urlparts){
+    //Get orders for the logged in(authenticated) user ID
+    let userIDTemp = req.cookies.userID;
+    console.log("uid: ", userIDTemp);
+    let resMsg = {};
+    fdb.get(fdb.child(fdb.ref(fireDB), 'orders/newestOrderId')).then(snapshot1 => {
+        if(snapshot1.exists()){
+            let latestOrderID = snapshot1.val();
+            var orderMetadatas = {};
+            let orderCter = 0;
+            let done = 1;
+            for(let counter = Number(latestOrderID); counter > 0; counter--){
+                fdb.get(fdb.child(fdb.ref(fireDB), 'orders/ordermetadata/'+counter)).then(snapshot => {
+                    done++;
+                    if(snapshot.exists() && snapshot.val()["userid"] == userIDTemp){
+                        orderMetadatas[""+counter]= snapshot.val();
+                        orderCter++;
+                    }else {
+                    }
+                    if(counter == 1){
+                        resMsg.code = 200;
+                        resMsg.headers = {"Content-Type" : "application/json"};
+                        resMsg.body = JSON.stringify(orderMetadatas);
+
+                        res.writeHead(resMsg.code, resMsg.headers);
+                        res.end(resMsg.body);
+                    }
+                });
+            }
+        }
+        else
+            console.log("snapshot does not exist");
+    });
+};
+
+const getUsersOrderByID = function(req, res, urlparts){
+    //Verify that the user is who they say they are
+    let userIDTemp = req.cookies.userID;
+    let resMsg={};
+    resMsg.headers = {"Content-Type" : "application/json"};
+
+    fdb.get(fdb.child(fdb.ref(fireDB), 'orders/ordermetadata/' + req.body.id)).then(snapshot =>{
+        if(snapshot.exists()){
+            if(snapshot.val()["userid"] == userIDTemp){
+                fdb.get(fdb.child(fdb.ref(fireDB), 'orders/orderItems/' + req.body.id)).then(snapshot =>{
+                    if(snapshot.exists()){
+                        resMsg.code = 200;
+                        resMsg.body = JSON.stringify(snapshot);
+                    }else {
+                        resMsg.code = 400;
+                        resMsg.body = JSON.stringify("Could not find order with given ID");
+                    }
+                    res.writeHead(resMsg.code, resMsg.headers);
+                    res.end(resMsg.body);
+                })
+            }else {
+                resMsg.code = 401;
+                resMsg.body = JSON.stringify("Forbidden. incorrect user.");
+                res.writeHead(resMsg.code, resMsg.headers);
+                res.end(resMsg.body);
+            }
+        }else {
+            resMsg.code = 400;
+            resMsg.body = JSON.stringify("Could not find order with given ID");
+            
+            res.writeHead(resMsg.code, resMsg.headers);
+            res.end(resMsg.body);       
+        }
+    })
+
+    
+}
+
 //List of protected routes with their methods
 const protectedRoute = function(req){
     //
@@ -703,15 +817,19 @@ const protectedRoute = function(req){
 
     if (req.method === 'GET' && req.url.startsWith('/accounts'))
         return 1;
+    if (req.method === 'GET' && req.url.startsWith('/orderHist'))
+        return 1;
+    if (req.url.startsWith('/userOrder'))
+        return 1;
+    if (req.url.startsWith('/viewUserOrders'))
+        return 1;
     if (req.method === 'PATCH' && req.url.startsWith('/accounts'))
         return 1;
     if (req.method === 'DELETE' && req.url.startsWith('/accounts'))
         return 1;
     if (req.method === 'POST' && req.url.startsWith('/cart'))
         return 1;
-    if (req.method === 'GET' && req.url.startsWith('/userOrder'))
-        return 1;
-    if (req.method === 'GET' && req.url.startsWith('/makeOrder'))
+    if (req.method === 'POST' && req.url.startsWith('/makeOrder'))
         return 1;
     if (req.method === 'GET' && req.url.startsWith('/getOrders'))
         return 2;
@@ -743,16 +861,17 @@ const authenticateToken = function(req, res, next){
         res.clearCookie("userRank");
     }
 
+    let token = req.cookies.jwt;
+    let role = req.cookies.userRank;
     let clearance = protectedRoute(req);
     if(clearance == 0){
         next();            //so that when the page changes it is still stored
         return;
     }
-    let token = req.cookies.jwt;
-    let role = req.cookies.userRank;
     if(token == null) return res.sendStatus(401);
     if(clearance == 3 && role != "admin") return res.sendStatus(401);
     if(clearance == 2 && role != "admin" && role != "staff") return res.sendStatus(401);
+    if(clearance == 1 && role != "user" && role != "admin" && role != "staff") return res.sendStatus(401);
     jwt.verify(token, secretKey, (err, user) => {
         if(err) console.log(err);
         if(err) return res.sendStatus(403);
@@ -840,6 +959,12 @@ const router = function(req, res){
     let done = false;
 
     if(req.method == "GET"){
+
+        if(done === false && /\/viewUserOrders/.test(req.url)){
+            resMsg = getUsersOrders(req, res, urlparts);
+            done = true;
+        }
+
         if(done === false && /\/getOrders/.test(req.url)){
             resMsg = getOrders(req, res, urlparts);
             done = true;
@@ -902,6 +1027,15 @@ const router = function(req, res){
 
     }else if(req.method == "POST"){
         
+        if(done === false && /\/userOrder/.test(req.url)){
+            resMsg = getUsersOrderByID(req, res, urlparts);
+            done = true;
+        }
+
+        if(done === false && /\/makeorder/.test(req.url)){
+            orders(req, res, urlparts);
+            done = true;
+        }
         if(done === false && /\/findItemsByTrait/.test(req.url)){
             findItemsByTrait(req, res, urlparts);
             done = true;
@@ -990,7 +1124,6 @@ const router = function(req, res){
 
 //setting up mySQL database, still needs work
 //from lec8 REST server example slides
-const passwd = require("./password.json")
 const dbCon = mysql.createConnection(
     {
         host:"localhost",
@@ -1000,9 +1133,13 @@ const dbCon = mysql.createConnection(
 )
 
 var sqlStmt = "CREATE DATABASE BestestBuy";
+try{
 dbCon.connect(function(err)
 {
-    if(err) throw err;
+    if(err){
+        "ERROR: Could not connect to MYSQL database.";
+        throw err;
+    };
     console.log("Connected to MySQL database");
 
     try {
@@ -1029,10 +1166,17 @@ dbCon.connect(function(err)
     setupSqlDatabase();
     mysqlLoaded = true;
 });
+}
+catch(exc){
+    "ERROR: Could not connect to MYSQL database.";
+    throw exc;
+}
 
-fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
+fs.readFile(__dirname + "/sendgridAPI-DONOTUPLOAD.json").then(contents => {
     sApiKey = JSON.parse(contents).key;
     console.log(sApiKey);
+}).catch( () => {
+    console.log("ERROR: Could not find file \"sendgridAPI-DONOTUPLOAD.json\". Sendgrid email functionality is now offline.");
 });
 
 //Set up firebase for noSQL db usage
@@ -1058,7 +1202,7 @@ fs.readFile(__dirname + "/firebaseAPI-DONOTUPLOAD.json").then(contents => {
         console.log("Error loading firebase: vvvv");
         console.log(error);
     }
-}).catch(() => console.log("Firebase JSON load error"));
+}).catch(() => {console.log("ERROR: Could not find file \"firebaseAPI-DONOTUPLOAD.json\". Firebase Orders Database could not be connected to.");});
 
 const app = express();
 

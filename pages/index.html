@@ -8,14 +8,16 @@
                 width: 25%;
                 height: auto;
             }
+            .inline_p {
+                display: inline-block;
+              }
         </style>
     </head>
     
     <body>
         
         <img class="resize" src="images/logo.png">
-        <h1>Welcome to Bestest Buy</h1>
-
+        <h1 class="inline_p">Welcome to Bestest Buy</h1> 
         <br>
 
         <!-- This is just for navigation of the sample pages. -->
@@ -25,6 +27,7 @@
         <a href="/products" class="button">Browse Products</a>
         <a href="/admin" class="button">Admin</a>
         <a href="/staff" class="button">Employee</a>
+        <a href="/orderHist" class="button">User - View Order History</a>
 
         <br>
         <br>
@@ -34,7 +37,9 @@
             can locate it -->
         <button onclick="buttonFunc()">Get Database Status</button>
         <p id="demo"></p>
-
+        <br>
+        <br>
+        <h2>Joseph Arrigo, Prayag Patel, Rahaf Abdallah, Dean Ingram, Luis Castellanos, Javil V Patel, Visshwa Magesh, David Arevalo, Paul Kim, Gopi Maanas</p>
         <!-- window.location.href gets current URL in brow, this is template for updating element in page
             with a response from the server, as opposed to the server completely overwriting the currently loaded
             page/response -->
@@ -44,12 +49,7 @@
             .find((row) => row.startsWith("username="))
             ?.split("=")[1];
 
-            const userID = document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("userID="))
-            ?.split("=")[1];
-
-            if(username === undefined || userID === undefined){
+            if(username === undefined){
                 document.getElementById('ManageUser').innerHTML = "Not signed in yet :(";
             }else {
                 document.getElementById('ManageUser').innerHTML = "Welcome back " + username + "!";
