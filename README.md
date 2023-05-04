@@ -6,11 +6,11 @@ Report 1: [Google Docs](https://docs.google.com/document/d/1q1VkaWLZzXKBJ516M2U0
 
 #Instructions to Run Server
 REQUIRED DEPENDENCIES AND INSTALL COMMANDS (terminal/cmd): 
-express:		    ```npm install express –save```
-mysql2:		        ```npm install mysql2```
-firebase:		    ```npm install firebase```
-cookie-parser:		```npm install cookie-parser```
-jsonwebtoken:		```npm install jsonwebtoken```
+express:		    ```npm install express –save```  
+mysql2:		        ```npm install mysql2```  
+firebase:		    ```npm install firebase```  
+cookie-parser:		```npm install cookie-parser```  
+jsonwebtoken:		```npm install jsonwebtoken```  
 
 REQUIRED FILES IN DIRECTORY:
 ```
