@@ -169,7 +169,6 @@ var deleteItem = function(req, res, urlparts) {
     let resMsg = {};
 
     var post = req.body;
-    console.log(post);
     var pName = post.name;
     var pDesc = post.desc;
     var pPrice = post.price;
@@ -220,8 +219,6 @@ var deleteItem = function(req, res, urlparts) {
 
     query += updateFields.join(", ") + " WHERE `productName` = ?";
     queryParams.push(pName);
-    console.log(query);
-    console.log(queryParams);
     dbCon.query(query, queryParams, function(err, result, fields) {
         if (err) {
             console.log(err);
@@ -243,7 +240,7 @@ var deleteItem = function(req, res, urlparts) {
     });
 };
 
-var sendEmail = function(contents) {
+var sendEmail = function(contents, userEmail) {
     let reqEmail = {
         method: "POST",
         headers: {
@@ -253,8 +250,8 @@ var sendEmail = function(contents) {
         body: JSON.stringify({
             personalizations: [{
                 to: [{
-                    email: "jma396@scarletmail.rutgers.edu",
-                    name: "Bestest Buy Admin"
+                    email: userEmail,
+                    name: "Valued Bestest Buy Customer"
                 }],
                 subject: "Order Placed!"}],
             content: [{
@@ -298,7 +295,6 @@ var currentOrderID;
 var orders = function(req, res, urlparts) {
     //Push data from json data inside request to firedb.
     let body = req.body;
-    console.log("order", req.body);
     let newOrderID = currentOrderID + 1;
 
     //calculate relevant metrics: total cost, timestamp, total qty
@@ -333,7 +329,7 @@ var orders = function(req, res, urlparts) {
     resMsg.headers = {"Content-Type" : "text/plain"};
     resMsg.body = "Order placed with ID: " + newOrderID;
 
-    sendEmail("Order ID: "+ newOrderID);
+    sendEmail("Order ID: "+ newOrderID + " => \n\n\n" + JSON.stringify(req.body), req.cookies.userEmail);
 
     return resMsg;
 };
@@ -390,7 +386,6 @@ var sales = function(req, res, urlparts) {
                             fdb.get(fdb.child(fdb.ref(fireDB), 'orders/ordermetadata/'+counter)).then(snapshot => {
                                 if(snapshot.exists()){
                                     if(new Date(snapshot.val()["timestamp"]) > ordersSince){
-                                        console.log("counter: ", counter);
                                         orderMetadatas[""+counter]= snapshot.val();
                                     }else if(done == false) {
                                         done = true;
@@ -511,6 +506,7 @@ var authenticate = function(req, res, urlparts){
         res.cookie("userID", result[0].userID, {secure: false, httpOnly: true});
         res.cookie("username", result[0].UserName, {secure: false, httpOnly: false});
         res.cookie("userRank", result[0].Role, {secure: false, httpOnly: true});
+        res.cookie("userEmail", result[0].Email, {secure: false, httpOnly: true});
         res.send()
         //res.end(JSON.stringify({ token: token }));
     });
@@ -652,7 +648,6 @@ var viewInventory = function(req, res, urlparts) {
         }
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        console.log(result);
         res.end(JSON.stringify(result));
     });
 }
@@ -675,12 +670,10 @@ const viewOrder = function(req, res, urlparts) {
 }
 
 const modifyOrder = function(req, res, urlparts) {
-    console.log(req.body);
     fdb.update(fdb.ref(fireDB, "orders/ordermetadata/" + req.body.id), {orderStatus: req.body.status}).then(out => {
         let resMsg = {};
         resMsg.code = 200;
         resMsg.headers = {"Content-Type" : "application/json"};
-        console.log(out);
         resMsg.body = JSON.stringify(out);
         res.writeHead(resMsg.code, resMsg.headers);
         res.end(resMsg.body);
@@ -735,7 +728,6 @@ const getOrders =function(req, res, urlparts) {
 const getUsersOrders = function(req, res, urlparts){
     //Get orders for the logged in(authenticated) user ID
     let userIDTemp = req.cookies.userID;
-    console.log("uid: ", userIDTemp);
     let resMsg = {};
     fdb.get(fdb.child(fdb.ref(fireDB), 'orders/newestOrderId')).then(snapshot1 => {
         if(snapshot1.exists()){
@@ -859,6 +851,7 @@ const authenticateToken = function(req, res, next){
         res.clearCookie("userID");
         res.clearCookie("username");
         res.clearCookie("userRank");
+        res.clearCookie("userEmail");
     }
 
     let token = req.cookies.jwt;
@@ -922,10 +915,8 @@ const setupSqlDatabase = function() {
 
 var viewItems = function(req, res, urlparts){
     var category = req.url.split('/')[2];
-    console.log(category);
     let resMsg = {};
     //connection.query("select * from bestestbuy.electronicsproductspricingdata where brand = 'Acer' order by productName asc limit 10", function (err, result) {
-    console.log("SELECT * FROM `Inventory` WHERE category = '" + category + "' order by productName asc limit 10");
     dbCon.query("SELECT * FROM `Inventory` WHERE category = '" + category + "' order by productName asc limit 10", function (err, result) {
         if (err) {
             resMsg.code = 400;
@@ -1052,7 +1043,6 @@ const router = function(req, res){
         }
 
         if(done === false && /\/viewReport/.test(req.url)){
-            console.log("viewreport");
             viewReport(req, res, urlparts);
             done = true;
         }
@@ -1075,7 +1065,6 @@ const router = function(req, res){
             done = true;
         }
     }else if(req.method == "PATCH"){
-        console.log(req.url);
         if(done === false && req.url.startsWith("/accounts/")){
             resMsg = updateAccount(req, res, urlparts);
             done = true;
@@ -1132,7 +1121,7 @@ const dbCon = mysql.createConnection(
     }
 )
 
-var sqlStmt = "CREATE DATABASE BestestBuy";
+var sqlStmt = "CREATE DATABASE IF NOT EXISTS BestestBuy";
 try{
 dbCon.connect(function(err)
 {
@@ -1142,26 +1131,21 @@ dbCon.connect(function(err)
     };
     console.log("Connected to MySQL database");
 
-    try {
-        dbCon.query(sqlStmt, function (err, result) {
-            if (err)
-            {
-                console.log(err);
-                return;
-            } 
-            console.log("Result: ", result);
-        });
-    } catch (error) {
-        var sqlStmt = "USE BestestBuy";
-        dbCon.query(sqlStmt, function (err, result) {
-            if (err)
-            {
-                console.log(err);
-                return;
-            } 
-            console.log("Result: ", result);
-        });
-    }
+    dbCon.query(sqlStmt, function (err, result) {
+        if (err)
+        {
+            console.log(err);
+            return;
+        } 
+    });
+
+    dbCon.query("USE bestestbuy", function (err, result) {
+        if (err)
+        {
+            console.log(err);
+            return;
+        } 
+    });
 
     setupSqlDatabase();
     mysqlLoaded = true;
@@ -1174,7 +1158,6 @@ catch(exc){
 
 fs.readFile(__dirname + "/sendgridAPI-DONOTUPLOAD.json").then(contents => {
     sApiKey = JSON.parse(contents).key;
-    console.log(sApiKey);
 }).catch( () => {
     console.log("ERROR: Could not find file \"sendgridAPI-DONOTUPLOAD.json\". Sendgrid email functionality is now offline.");
 });
@@ -1221,7 +1204,6 @@ var compactSqlQuery = function(query, log=false, handler) {
             return; //I considered having this return false or true, but I figured since this can be a little asynch, it wouldn't be very useful in a (default) synchronous context.
         } 
         if(log)
-            console.log("Result: ", result);
         if(handler != undefined)
             handler(result);
     });
