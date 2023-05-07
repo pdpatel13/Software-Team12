@@ -102,19 +102,14 @@
             .find((row) => row.startsWith("username="))
             ?.split("=")[1];
 
-            const userID = document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("userID="))
-            ?.split("=")[1];
-
-            if(username === undefined || userID === undefined){
+            if(username === undefined){
                 document.getElementById('ManageUser').innerHTML = "Not signed in yet :(";
             }else {
                 document.getElementById('ManageUser').innerHTML = "Welcome back " + username + "!";
             }
 
 
-            if(username === undefined || userID === undefined){
+            if(username === undefined){
                 document.getElementById("logOutButton").hidden = true;
                 document.getElementById("registerButton").hidden = false;
                 document.getElementById("signInButton").hidden = false;
